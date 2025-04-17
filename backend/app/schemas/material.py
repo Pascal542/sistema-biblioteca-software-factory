@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
+from datetime import datetime
 
 class GeneroLibro(str, Enum):
     INFANTIL = "Infantil"
@@ -38,3 +39,23 @@ class Material(MaterialBase):
 
     class Config:
         orm_mode = True
+
+class MaterialDisponible(BaseModel):
+    tipo: str
+    titulo: str
+    cantidad_disponible: int
+    cantidad_total: int
+
+    class Config:
+        from_attributes = True
+
+class MaterialEnPrestamo(BaseModel):
+    tipo: str
+    titulo: str
+    autor: str
+    cantidad_prestada: int
+    fecha_prestamo: datetime
+    factor_estancia: float
+
+    class Config:
+        from_attributes = True

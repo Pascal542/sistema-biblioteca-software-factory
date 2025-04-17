@@ -49,6 +49,41 @@ def obtener_solicitudes(
     solicitudes = db.query(models.SolicitudPrestamo).offset(skip).limit(limit).all()
     return solicitudes
 
+@router.get("/revistas/", response_model=List[solicitud_prestamo.SolicitudRevistaDetalle])
+def obtener_solicitudes_revistas(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene un listado de todas las solicitudes de revistas con el nombre del cliente,
+    dirección particular y título del material.
+    """
+    solicitudes = (
+        db.query(
+            models.SolicitudPrestamo,
+            models.Material.titulo
+        )
+        .join(models.Material)
+        .filter(models.Material.tipo == "revista")
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    
+    return [
+        solicitud_prestamo.SolicitudRevistaDetalle(
+            id=s.id,
+            nombre_usuario=s.nombre_usuario,
+            direccion_usuario=s.direccion_usuario,
+            titulo_material=titulo,
+            fecha_solicitud=s.fecha_solicitud,
+            estado=s.estado,
+            observaciones=s.observaciones
+        )
+        for s, titulo in solicitudes
+    ]
+
 @router.get("/{solicitud_id}", response_model=solicitud_prestamo.SolicitudPrestamo)
 def obtener_solicitud(
     solicitud_id: int,
@@ -74,6 +109,19 @@ def actualizar_solicitud(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Solicitud no encontrada"
         )
+    
+    # Si se aprueba la solicitud, crear un préstamo
+    if solicitud_update.estado == "aprobada" and db_solicitud.estado != "aprobada":
+        material = db.query(models.Material).filter(models.Material.id == db_solicitud.material_id).first()
+        if material and material.cantidad_prestamo < material.cantidad_total:
+            # Crear el préstamo
+            db_prestamo = models.Prestamo(
+                usuario_id=db_solicitud.usuario_id,
+                material_id=db_solicitud.material_id,
+                estado="activo"
+            )
+            material.cantidad_prestamo += 1
+            db.add(db_prestamo)
     
     # Actualizar los campos
     for key, value in solicitud_update.dict(exclude_unset=True).items():
