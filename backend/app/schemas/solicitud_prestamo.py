@@ -22,4 +22,16 @@ class SolicitudPrestamo(SolicitudPrestamoBase):
     estado: str
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+
+class SolicitudRevistaDetalle(BaseModel):
+    id: int
+    nombre_usuario: str
+    direccion_usuario: str
+    titulo_material: str
+    fecha_solicitud: datetime
+    estado: str
+    observaciones: Optional[str] = None
+
+    class Config:
+        from_attributes = True 
