@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import random
 from .models import Usuario, Libro, Revista, ActaCongreso, Prestamo
 from .models import GeneroLibro, FrecuenciaPublicacion
+from .utils.security import hash_password
+from .models import RolUsuario
 
 # Datos de ejemplo
 nombres = ["Juan", "María", "Carlos", "Ana", "Luis", "Laura", "Pedro", "Sofía", "Miguel", "Elena"]
@@ -47,16 +49,33 @@ titulos_actas = [
     "Conference on Human Factors in Computing Systems"
 ]
 
+
 def crear_usuarios(db: Session, cantidad: int = 50):
+    # Crear admin
+    admin = Usuario(
+        nombre="Administrador",
+        carne_identidad="ADMIN123",
+        direccion="Dirección de Administración",
+        email="admin@biblioteca.com",
+        password_hash=hash_password("admin123"),
+        rol=RolUsuario.ADMIN
+    )
+    db.add(admin)
+
+    # Crear usuarios normales
     for i in range(cantidad):
         nombre = f"{random.choice(nombres)} {random.choice(apellidos)}"
         carne = f"CI{random.randint(100000, 999999)}"
         direccion = f"{random.choice(calles)} {random.randint(1, 100)}, {random.choice(ciudades)}"
-        
+        email = f"usuario{i + 1}@correo.com"
+
         usuario = Usuario(
             nombre=nombre,
             carne_identidad=carne,
-            direccion=direccion
+            direccion=direccion,
+            email=email,
+            password_hash=hash_password(f"password{i + 1}"),
+            rol=RolUsuario.USUARIO
         )
         db.add(usuario)
     db.commit()

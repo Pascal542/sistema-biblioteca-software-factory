@@ -58,10 +58,14 @@ def crear_acta(acta_data: material.ActaCongresoCreate, db: Session = Depends(get
     db.refresh(db_acta)
     return calcular_y_agregar_factor_estancia(db_acta)
 
-@router.get("/", response_model=List[material.Material])
+@router.get("/", response_model=dict)
 def obtener_materiales(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    total = db.query(models.Material).count()  # Total de materiales
     materiales = db.query(models.Material).offset(skip).limit(limit).all()
-    return [calcular_y_agregar_factor_estancia(m) for m in materiales]
+    return {
+        "materials": [calcular_y_agregar_factor_estancia(m) for m in materiales],
+        "total": total
+    }
 
 @router.get("/ordenados/", response_model=List[material.Material])
 def obtener_materiales_ordenados(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -85,19 +89,22 @@ def obtener_materiales_disponibles(db: Session = Depends(get_db)):
     """
     # Obtener la cantidad total y en préstamo de cada tipo de material
     materiales_disponibles = []
-    
+
     # Libros
     libros = db.query(
+        models.Libro.id,
         models.Libro.titulo,
+        models.Libro.autor,
         func.count(models.Libro.id).label('total'),
         func.sum(models.Libro.cantidad_prestamo).label('prestados')
-    ).group_by(models.Libro.titulo).all()
+    ).group_by(models.Libro.id, models.Libro.titulo, models.Libro.autor).all()
     
     for libro in libros:
         prestados = libro.prestados if libro.prestados is not None else 0
         disponibles = max(0, libro.total - prestados)
         materiales_disponibles.append(
             material.MaterialDisponible(
+                id=libro.id,
                 tipo="Libro",
                 titulo=libro.titulo,
                 cantidad_disponible=disponibles,
@@ -107,16 +114,19 @@ def obtener_materiales_disponibles(db: Session = Depends(get_db)):
     
     # Revistas
     revistas = db.query(
+        models.Revista.id,
         models.Revista.titulo,
+        models.Revista.autor,
         func.count(models.Revista.id).label('total'),
         func.sum(models.Revista.cantidad_prestamo).label('prestados')
-    ).group_by(models.Revista.titulo).all()
+    ).group_by(models.Revista.id, models.Revista.titulo, models.Revista.autor).all()
     
     for revista in revistas:
         prestados = revista.prestados if revista.prestados is not None else 0
         disponibles = max(0, revista.total - prestados)
         materiales_disponibles.append(
             material.MaterialDisponible(
+                id=revista.id,
                 tipo="Revista",
                 titulo=revista.titulo,
                 cantidad_disponible=disponibles,
@@ -126,16 +136,19 @@ def obtener_materiales_disponibles(db: Session = Depends(get_db)):
     
     # Actas de Congreso
     actas = db.query(
+        models.ActaCongreso.id,
         models.ActaCongreso.titulo,
+        models.ActaCongreso.autor,
         func.count(models.ActaCongreso.id).label('total'),
         func.sum(models.ActaCongreso.cantidad_prestamo).label('prestados')
-    ).group_by(models.ActaCongreso.titulo).all()
+    ).group_by(models.ActaCongreso.id, models.ActaCongreso.titulo, models.ActaCongreso.autor).all()
     
     for acta in actas:
         prestados = acta.prestados if acta.prestados is not None else 0
         disponibles = max(0, acta.total - prestados)
         materiales_disponibles.append(
             material.MaterialDisponible(
+                id=acta.id,
                 tipo="Acta de Congreso",
                 titulo=acta.titulo,
                 cantidad_disponible=disponibles,
@@ -243,12 +256,37 @@ def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
     
     return materiales_en_prestamo
 
+
 @router.get("/{material_id}", response_model=material.Material)
 def obtener_material(material_id: int, db: Session = Depends(get_db)):
-    db_material = db.query(models.Material).filter(models.Material.id == material_id).first()
-    if db_material is None:
+    # Intenta buscar en cada tipo de material específico
+    material_result = None
+
+    # Buscar en Libros
+    db_libro = db.query(models.Libro).filter(models.Libro.id == material_id).first()
+    if db_libro:
+        material_result = db_libro
+
+    # Buscar en Revistas si no se encontró en Libros
+    if not material_result:
+        db_revista = db.query(models.Revista).filter(models.Revista.id == material_id).first()
+        if db_revista:
+            material_result = db_revista
+
+    # Buscar en Actas si no se encontró en los anteriores
+    if not material_result:
+        db_acta = db.query(models.ActaCongreso).filter(models.ActaCongreso.id == material_id).first()
+        if db_acta:
+            material_result = db_acta
+
+    # Si no se encontró en ninguna tabla específica, buscar en la tabla base
+    if not material_result:
+        material_result = db.query(models.Material).filter(models.Material.id == material_id).first()
+
+    if material_result is None:
         raise HTTPException(status_code=404, detail="Material no encontrado")
-    return calcular_y_agregar_factor_estancia(db_material)
+
+    return calcular_y_agregar_factor_estancia(material_result)
 
 @router.put("/{material_id}", response_model=material.Material)
 def actualizar_material(
@@ -292,3 +330,63 @@ def eliminar_material(material_id: int, db: Session = Depends(get_db)):
     db.delete(db_material)
     db.commit()
     return {"message": "Material eliminado correctamente"}
+
+
+@router.get("/libros/", response_model=dict)
+def obtener_libros(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Obtiene un listado de todos los libros disponibles en la biblioteca.
+    """
+    total = db.query(models.Libro).count()
+    libros = db.query(models.Libro).offset(skip).limit(limit).all()
+
+    result = []
+    for libro in libros:
+        libro_dict = calcular_y_agregar_factor_estancia(libro).__dict__
+        libro_dict['genero'] = libro.genero
+        result.append(libro_dict)
+
+    return {
+        "materials": result,
+        "total": total
+    }
+
+
+@router.get("/revistas/", response_model=dict)
+def obtener_revistas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Obtiene un listado de todas las revistas disponibles en la biblioteca.
+    """
+    total = db.query(models.Revista).count()
+    revistas = db.query(models.Revista).offset(skip).limit(limit).all()
+
+    result = []
+    for revista in revistas:
+        revista_dict = calcular_y_agregar_factor_estancia(revista).__dict__
+        revista_dict['frecuencia_publicacion'] = revista.frecuencia_publicacion
+        result.append(revista_dict)
+
+    return {
+        "materials": result,
+        "total": total
+    }
+
+
+@router.get("/actas/", response_model=dict)
+def obtener_actas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Obtiene un listado de todas las actas de congreso disponibles en la biblioteca.
+    """
+    total = db.query(models.ActaCongreso).count()
+    actas = db.query(models.ActaCongreso).offset(skip).limit(limit).all()
+
+    result = []
+    for acta in actas:
+        acta_dict = calcular_y_agregar_factor_estancia(acta).__dict__
+        acta_dict['nombre_congreso'] = acta.nombre_congreso
+        result.append(acta_dict)
+
+    return {
+        "materials": result,
+        "total": total
+    }

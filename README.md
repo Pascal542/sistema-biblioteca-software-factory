@@ -73,7 +73,7 @@ uvicorn app.main:app --reload
 3. Acceder a la API:
 - API: http://localhost:8000
 - Documentación Swagger UI: http://localhost:8000/docs
-- Documentación ReDoc: http://localhost:8000/redoc
+- Documentación ReDoc: s
 
 ## Endpoints Disponibles
 

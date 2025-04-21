@@ -33,7 +33,13 @@ class Material(Base):
     }
 
     def calcular_factor_estancia(self) -> float:
-        raise NotImplementedError("Este método debe ser implementado por las subclases")
+        try:
+            llegada = int(self.anio_llegada)
+            if llegada <= 0:
+                return 0.0
+            return (self.anio_publicacion + 1) / llegada
+        except (ValueError, TypeError, ZeroDivisionError):
+            return 0.0
 
 class Libro(Material):
     __tablename__ = "libros"
@@ -67,15 +73,18 @@ class Revista(Material):
     }
 
     def calcular_factor_estancia(self) -> float:
-        base = (self.anio_publicacion + 1) / self.anio_llegada
-        
-        if self.frecuencia_publicacion == FrecuenciaPublicacion.TRIMESTRAL:
-            return base * 1.4
-        elif self.frecuencia_publicacion == FrecuenciaPublicacion.SEMESTRAL:
-            return base * 1.33
-        elif self.frecuencia_publicacion == FrecuenciaPublicacion.ANUAL:
-            return base * 1.15
-        return base
+        try:
+            base = (self.anio_publicacion + 1) / self.anio_llegada
+
+            if self.frecuencia_publicacion == FrecuenciaPublicacion.TRIMESTRAL:
+                return base * 1.4
+            elif self.frecuencia_publicacion == FrecuenciaPublicacion.SEMESTRAL:
+                return base * 1.33
+            elif self.frecuencia_publicacion == FrecuenciaPublicacion.ANUAL:
+                return base * 1.15
+            return base
+        except ZeroDivisionError:
+            return 0.0
 
 class ActaCongreso(Material):
     __tablename__ = "actas_congreso"
@@ -88,4 +97,10 @@ class ActaCongreso(Material):
     }
 
     def calcular_factor_estancia(self) -> float:
-        return (self.anio_publicacion + 1) / self.anio_llegada
+        try:
+            llegada = int(self.anio_llegada)
+            if llegada <= 0:
+                return 0.0
+            return (self.anio_publicacion + 1) / llegada
+        except (ValueError, TypeError, ZeroDivisionError):
+            return 0.0
