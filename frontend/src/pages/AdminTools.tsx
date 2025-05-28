@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/axiosInstance';
 import { generateUsername, generatePassword } from '../utils/auth';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
@@ -26,7 +26,7 @@ const AdminTools = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get('http://localhost:8000/api/usuarios/?skip=0&limit=100');
+      const response = await api.get('/usuarios?skip=0&limit=100');
       setUsers(response.data);
     } catch (err) {
       console.error('Error loading users:', err);

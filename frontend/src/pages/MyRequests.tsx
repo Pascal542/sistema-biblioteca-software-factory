@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/axiosInstance';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,6 +35,7 @@ interface MaterialDetalle {
   factor_estancia: number;
 }
 
+
 const MyRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -53,6 +54,8 @@ const MyRequests = () => {
     const fetchData = async () => {
       try {
         await fetchUserData();
+        // Cargar solicitudes inmediatamente después de obtener datos del usuario
+        await fetchMySolicitudes();
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Error al cargar los datos iniciales.');
@@ -62,43 +65,44 @@ const MyRequests = () => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (userData?.carne_identidad) {
-      fetchMySolicitudes();
-    }
-  }, [userData]);
+  // Remover el segundo useEffect que dependía de userData
+  // useEffect(() => {
+  //   if (userData?.carne_identidad) {
+  //     fetchMySolicitudes();
+  //   }
+  // }, [userData]);
 
   const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/auth/me');
       setUserData(response.data);
     } catch (err: unknown) {
       console.error('Error fetching user data:', err);
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        setError('No se pudo obtener la información del usuario. Por favor, inicie sesión nuevamente.');
-      } else {
-        console.log(user);
-        setError('Error al obtener los datos del usuario. Intente nuevamente.');
-      }
+      setError('Error al obtener los datos del usuario. Intente nuevamente.');
     }
   };
 
   const fetchMySolicitudes = async () => {
     try {
-      const response = await axios.get(`/api/solicitudes/cliente/${userData?.carne_identidad}`);
-      setSolicitudes(response.data);
+      // Usar el email del usuario autenticado en lugar de carne_identidad
+      if (!user?.email) {
+        setError('Usuario no autenticado');
+        return;
+      }
+
+      // Usar el endpoint correcto que busca por email
+      const response = await api.get(`/solicitudes/usuario-email/${user.email}`);
       
-      const materialIds = response.data
+      // La respuesta es paginada, así que usar response.data.data
+      const solicitudesData = response.data.data || [];
+      setSolicitudes(solicitudesData);
+      
+      const materialIds = solicitudesData
         .map((solicitud: MaterialSolicitud) => solicitud.material_id)
         .filter((id: number) => id !== undefined && id !== null);
 
       const uniqueIds = [...new Set(materialIds)] as number[];
-      console.log("Correigr esto:", uniqueIds);
+      console.log("Material IDs encontrados:", uniqueIds);
       const idsToFetch = uniqueIds.filter(id => !materialTitles[id]);
       
       if (idsToFetch.length > 0) {
@@ -112,6 +116,7 @@ const MyRequests = () => {
     }
   };
 
+
   const fetchMaterialTitles = async (materialIds: number[]) => {
     try {
       const newTitles = {...materialTitles};
@@ -119,7 +124,7 @@ const MyRequests = () => {
       
       for (const id of materialIds) {
         try {
-          const response = await axios.get(`/api/materiales/${id}`);
+          const response = await api.get(`/materiales/${id}`);
           console.log(`Material ${id} response:`, response.data);
           
           if (response.data && response.data.titulo) {
@@ -150,7 +155,7 @@ const MyRequests = () => {
     
     setCancellingId(id);
     try {
-      await axios.put(`/api/solicitudes/${id}`, {
+      await api.put(`/solicitudes/${id}`, {
         estado: 'cancelada',
         observaciones: 'Cancelada por el usuario'
       });
@@ -173,7 +178,7 @@ const MyRequests = () => {
     console.log("Cargando materiales de  ID:", materialId);
     
     try {
-      const response = await axios.get(`/api/materiales/${materialId}`);
+      const response = await api.get(`/materiales/${materialId}`);
       console.log("Material details recivido:", response.data);
       
       if (response.data) {

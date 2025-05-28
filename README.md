@@ -115,3 +115,4 @@ El proyecto utiliza SQLite como base de datos. El archivo `biblioteca.db` se cre
 - Agregar validaciones adicionales
 - Implementar pruebas unitarias
 - Desarrollar el frontend
+ 

@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { BACKEND } from '../utils/conexion';
 
-const axiosInstance = axios.create({
-  baseURL: BACKEND,
+const api = axios.create({
+  baseURL: `${BACKEND}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-axiosInstance.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -16,20 +16,20 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-axiosInstance.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
-      localStorage.removeItem('admin');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-export default axiosInstance;
+export default api;

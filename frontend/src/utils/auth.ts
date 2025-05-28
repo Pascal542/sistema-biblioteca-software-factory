@@ -1,4 +1,3 @@
-
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const CLAVE = 82641;
 
@@ -6,40 +5,22 @@ const pseudoRandom = (seed: number): number => {
   return Math.abs(Math.sin(seed) * 10000) % 1;
 };
 
-export const generateUsername = (id: number): string => {
-  if (id === 1) return '9mEkSof32K';
-  if (id === 2) return 'K4rT9zLpQm';
-  if (id === 3) return 'B7vXs2Jn1D';
-  
-  let seed = CLAVE + id * 1000;
-  let username = '';
-  const length = 10;
-  
-  for (let i = 0; i < length; i++) {
-    seed = Math.floor(pseudoRandom(seed + i) * 1000000);
-    const charIndex = seed % BASE62.length;
-    username += BASE62[charIndex];
-  }
-  
-  return username;
+export const generateUsername = (userId: number): string => {
+  return `user_${userId}_${Date.now().toString().slice(-6)}`;
 };
 
-export const generatePassword = (id: number): string => {
-  if (id === 1) return 'NflCQAV';
-  if (id === 2) return 'R5tY8zP';
-  if (id === 3) return 'H3vN7bM';
+export const generatePassword = (userId: number): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const userString = userId.toString();
   
-  let seed = CLAVE + id * 2000;
-  let password = '';
-  const length = 7;
+  result += userString;
   
-  for (let i = 0; i < length; i++) {
-    seed = Math.floor(pseudoRandom(seed + i) * 1000000);
-    const charIndex = seed % BASE62.length;
-    password += BASE62[charIndex];
+  for (let i = 0; i < 8 - userString.length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   
-  return password;
+  return result;
 };
 
 export const extractIdFromUsername = (username: string): number | null => {

@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  api_gateway:
+    build: ./api_gateway
+    ports:
+      - '8000:8000'
+    environment:
+      - AUTH_SERVICE_URL=http://auth_service:8001
+      - MATERIAL_SERVICE_URL=http://material_service:8002
+      - LOAN_SERVICE_URL=http://loan_service:8003
+      - REQUEST_SERVICE_URL=http://request_service:8004
+    depends_on:
+      - auth_service
+      - material_service
+      - loan_service
+      - request_service
+
+  auth_service:
+    build: ./auth_service
+    ports:
+      - '8001:8001'
+    environment:
+      - DATABASE_URL=mysql://root:12345678@auth_db:3306/sf38_auth
+      - SECRET_KEY=sf2025
+    depends_on:
+      - auth_db
+
+  material_service:
+    build: ./material_service
+    ports:
+      - '8002:8002'
+    environment:
+      - DATABASE_URL=mysql://root:12345678@material_db:3306/sf38_materiales
+    depends_on:
+      - material_db
+
+  loan_service:
+    build: ./loan_service
+    ports:
+      - '8003:8003'
+    environment:
+      - DATABASE_URL=mysql://root:12345678@loan_db:3306/sf38_prestamos
+      - AUTH_SERVICE_URL=http://auth_service:8001
+      - MATERIAL_SERVICE_URL=http://material_service:8002
+    depends_on:
+      - loan_db
+      - auth_service
+      - material_service
+
+  request_service:
+    build: ./request_service
+    ports:
+      - '8004:8004'
+    environment:
+      - DATABASE_URL=mysql://root:12345678@request_db:3306/sf38_solicitudes
+      - AUTH_SERVICE_URL=http://auth_service:8001
+      - MATERIAL_SERVICE_URL=http://material_service:8002
+    depends_on:
+      - request_db
+      - auth_service
+      - material_service
+
+  auth_db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345678
+      - MYSQL_DATABASE=sf38_auth
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345678
+    volumes:
+      - auth_data:/var/lib/mysql
+    ports:
+      - '3307:3306'
+
+  material_db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345678
+      - MYSQL_DATABASE=sf38_materiales
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345678
+    volumes:
+      - material_data:/var/lib/mysql
+    ports:
+      - '3308:3306'
+
+  loan_db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345678
+      - MYSQL_DATABASE=sf38_prestamos
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345678
+    volumes:
+      - loan_data:/var/lib/mysql
+    ports:
+      - '3309:3306'
+
+  request_db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345678
+      - MYSQL_DATABASE=sf38_solicitudes
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345678
+    volumes:
+      - request_data:/var/lib/mysql
+    ports:
+      - '3310:3306'
+
+volumes:
+  auth_data:
+  material_data:
+  loan_data:
+  request_data:

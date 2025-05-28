@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/axiosInstance';
 import { useNavigate } from 'react-router-dom';
 
 interface Solicitud {
@@ -34,12 +34,12 @@ const MaterialRequests = () => {
     setLoading(true);
     setError('');
     try {
-      let url = '/api/solicitudes';
+      let url = '/solicitudes';
       if (filterEstado) {
         url += `?estado=${filterEstado}`;
       }
       
-      const response = await axios.get(url);
+      const response = await api.get(url);
       
       const solicitudesData = response.data;
       const materialesIds = solicitudesData.map((s: Solicitud) => s.material_id);
@@ -47,7 +47,7 @@ const MaterialRequests = () => {
       if (materialesIds.length > 0) {
         try {
           const materialesPromises = materialesIds.map((id: number) => 
-            axios.get(`/api/materiales/${id}`).catch(() => ({ data: null }))
+            api.get(`/materiales/${id}`).catch(() => ({ data: null }))
           );
           
           const materialesResponses = await Promise.all(materialesPromises);
@@ -95,7 +95,7 @@ const MaterialRequests = () => {
     
     setProcessingId(selectedSolicitudId);
     try {
-      await axios.put(`/api/solicitudes/${selectedSolicitudId}`, {
+      await api.put(`/solicitudes/${selectedSolicitudId}`, {
         estado: selectedAction === 'aprobar' ? 'aprobada' : 'rechazada',
         observaciones: observaciones || undefined
       });

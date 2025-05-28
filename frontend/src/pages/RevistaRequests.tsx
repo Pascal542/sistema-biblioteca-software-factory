@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getRevistaRequests } from '../services/Getters'; 
+import api from '../services/axiosInstance';
 
 interface SolicitudRevista {
   id: number;
@@ -21,7 +21,8 @@ const RevistaRequests = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getRevistaRequests();
+      const response = await api.get('/materiales/revistas/solicitudes');
+      const data = response.data;
       const formattedData = data.map((item: {
         id: number;
         nombre_usuario?: string;

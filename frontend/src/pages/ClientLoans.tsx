@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../services/axiosInstance';
 
 interface MaterialPrestado {
   titulo: string;
@@ -16,7 +16,7 @@ const ClientLoans = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`/api/prestamos/cliente/${carne}`);
+      const response = await api.get(`/prestamos/cliente/${carne}`);
       setMaterials(response.data);
     } catch (err) {
       console.error('Error fetching loans:', err);
