@@ -58,20 +58,31 @@ async def verificar_usuario(usuario_id: int):
             return False, None
 
 async def verificar_usuario_por_dni(dni: str):
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
-            # Buscar todos los usuarios y filtrar por DNI
-            response = await client.get(f"{AUTH_SERVICE_URL}/usuarios")
+            # Llamar directamente al servicio de usuarios sin el API Gateway
+            direct_url = f"{AUTH_SERVICE_URL}/usuarios"
+            
+            response = await client.get(direct_url)
+            
+            # Si aún hay redirect, intentar con la ruta del API Gateway
+            if response.status_code == 307:
+                gateway_url = f"{AUTH_SERVICE_URL}/api/usuarios"
+                response = await client.get(gateway_url)
+            
             if response.status_code != 200:
                 return False, None
             
             usuarios = response.json()
+            
             for usuario in usuarios:
-                if usuario.get("dni") == dni:
+                if usuario.get("carne_identidad") == str(dni):
                     return True, usuario
             
             return False, None
         except httpx.RequestError:
+            return False, None
+        except Exception:
             return False, None
 
 async def verificar_material(material_id: int):
@@ -148,7 +159,7 @@ async def crear_solicitud_prestamo(solicitud: SolicitudPrestamoCreate, db: Sessi
     db_solicitud = SolicitudPrestamo(
         usuario_id=solicitud.usuario_id,
         material_id=solicitud.material_id,
-        estado="Pendiente",
+        estado="pendiente",
         observaciones=solicitud.observaciones
     )
 
@@ -175,7 +186,7 @@ async def crear_solicitud_prestamo(solicitud: SolicitudPrestamoCreate, db: Sessi
     db_solicitud = SolicitudPrestamo(
         usuario_id=solicitud.usuario_id,
         material_id=solicitud.material_id,
-        estado="Aprobada",  # Cambiar a Aprobada automáticamente
+        estado="pendiente",
         observaciones=solicitud.observaciones
     )
     
@@ -237,75 +248,6 @@ def obtener_solicitud(solicitud_id: int, db: Session = Depends(get_db)):
         )
     return solicitud
 
-
-@router.get("/usuario-email/{email}", response_model=PaginatedSolicitudResponse)
-async def obtener_solicitudes_por_email(
-    email: str,
-    page: int = Query(1, ge=1, description="Número de página"),
-    size: int = Query(10, ge=1, le=100, description="Cantidad de elementos por página"),
-    db: Session = Depends(get_db)
-):
-    """
-    Obtiene todas las solicitudes de préstamo realizadas por un usuario identificado por su email con paginación.
-    """
-    # Buscar el usuario por email
-    async with httpx.AsyncClient() as client:
-        try:
-            # Buscar todos los usuarios y filtrar por email
-            response = await client.get(f"{AUTH_SERVICE_URL}/usuarios")
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Servicio de usuarios no disponible"
-                )
-            
-            usuarios = response.json()
-            usuario_data = None
-            for usuario in usuarios:
-                if usuario.get("email") == email:
-                    usuario_data = usuario
-                    break
-            
-            if not usuario_data:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuario no encontrado"
-                )
-                
-        except httpx.RequestError:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al conectar con el servicio de usuarios"
-            )
-    
-    # Calcular offset
-    skip = (page - 1) * size
-    
-    # Query base
-    query = db.query(SolicitudPrestamo).filter(
-        SolicitudPrestamo.usuario_id == usuario_data["id"],
-        SolicitudPrestamo.activo == True
-    )
-    
-    # Obtener el total de registros
-    total = query.count()
-    
-    # Obtener resultados paginados
-    solicitudes = query.offset(skip).limit(size).all()
-    
-    # Calcular páginas
-    pages = (total + size - 1) // size if total > 0 else 1
-    
-    return PaginatedSolicitudResponse(
-        data=solicitudes,
-        pagination=PaginationInfo(
-            total=total,
-            page=page,
-            size=size,
-            pages=pages
-        )
-    )
-
 @router.get("/usuario-dni/{dni}", response_model=PaginatedSolicitudResponse)
 async def obtener_solicitudes_por_dni(
     dni: str,
@@ -316,32 +258,31 @@ async def obtener_solicitudes_por_dni(
     """
     Obtiene todas las solicitudes de préstamo realizadas por un usuario identificado por su DNI con paginación.
     """
-    # Buscar el usuario por DNI
     usuario_existe, usuario_data = await verificar_usuario_por_dni(dni)
+    
     if not usuario_existe:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado"
+        return PaginatedSolicitudResponse(
+            data=[],
+            pagination=PaginationInfo(
+                total=0,
+                page=page,
+                size=size,
+                pages=1
+            )
         )
-    
-    # Calcular offset
+
     skip = (page - 1) * size
-    
+
     # Query base
     query = db.query(SolicitudPrestamo).filter(
         SolicitudPrestamo.usuario_id == usuario_data["id"],
         SolicitudPrestamo.activo == True
     )
-    
-    # Obtener el total de registros
+
     total = query.count()
-    
-    # Obtener resultados paginados
     solicitudes = query.offset(skip).limit(size).all()
-    
-    # Calcular páginas
     pages = (total + size - 1) // size if total > 0 else 1
-    
+
     return PaginatedSolicitudResponse(
         data=solicitudes,
         pagination=PaginationInfo(
@@ -407,19 +348,28 @@ async def actualizar_solicitud(
         )
 
     # Si se rechaza la solicitud, devolver la cantidad al material
-    if solicitud_update.estado == "Rechazada" and db_solicitud.estado == "Pendiente":
+    if solicitud_update.estado == "rechazada" and db_solicitud.estado == "pendiente":
         # Obtener información actual del material
         material_existe, material_data = await verificar_material(db_solicitud.material_id)
         if material_existe:
-            # Devolver 1 unidad al material
+            # Calcular nueva cantidad (sumar 1)
             nueva_cantidad = material_data["cantidad"] + 1
-            nuevo_estado = "disponible"  # El material vuelve a estar disponible
             
-            await actualizar_material_completo(
-                db_solicitud.material_id,
-                nueva_cantidad,
-                nuevo_estado
+            # Actualizar el estado del material a disponible cuando se devuelve
+            estado_material = "disponible"
+            
+            # Actualizar la cantidad y estado del material
+            material_actualizado, _ = await actualizar_material_completo(
+                db_solicitud.material_id, 
+                nueva_cantidad, 
+                estado_material
             )
+            
+            if not material_actualizado:
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Error al actualizar la cantidad del material al rechazar la solicitud"
+                )
 
     # Si se aprueba la solicitud, crear un préstamo
     if solicitud_update.estado == "Aprobada" and db_solicitud.estado != "Aprobada":
@@ -556,17 +506,17 @@ def obtener_estadisticas_solicitudes(db: Session = Depends(get_db)):
     ).scalar()
     
     solicitudes_pendientes = db.query(func.count(SolicitudPrestamo.id)).filter(
-        SolicitudPrestamo.estado == "Pendiente",
+        SolicitudPrestamo.estado == "pendiente",
         SolicitudPrestamo.activo == True
     ).scalar()
     
     solicitudes_aprobadas = db.query(func.count(SolicitudPrestamo.id)).filter(
-        SolicitudPrestamo.estado == "Aprobada",
+        SolicitudPrestamo.estado == "aprobada",
         SolicitudPrestamo.activo == True
     ).scalar()
     
     solicitudes_rechazadas = db.query(func.count(SolicitudPrestamo.id)).filter(
-        SolicitudPrestamo.estado == "Rechazada",
+        SolicitudPrestamo.estado == "rechazada",
         SolicitudPrestamo.activo == True
     ).scalar()
     

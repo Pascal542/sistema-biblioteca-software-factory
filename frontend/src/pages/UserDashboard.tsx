@@ -110,7 +110,7 @@ const UserDashboard = () => {
             {/* Card 1 - Materiales */}
             <div className="col-lg-4 col-md-6">
               <div className="card border-0 shadow-lg h-100 overflow-hidden position-relative" 
-                   style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
+                   style={{background: 'linear-gradient(135deg,rgb(56, 108, 250) 0%,rgb(24, 9, 158) 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div className="card-body text-white p-4">
@@ -140,7 +140,7 @@ const UserDashboard = () => {
             {/* Card 2 - Solicitudes */}
             <div className="col-lg-4 col-md-6">
               <div className="card border-0 shadow-lg h-100 overflow-hidden position-relative" 
-                   style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
+                   style={{background: 'linear-gradient(135deg,rgb(63, 252, 110) 0%,rgb(15, 138, 4) 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div className="card-body text-white p-4">
@@ -171,7 +171,7 @@ const UserDashboard = () => {
             {/* Card 3 - Préstamos */}
             <div className="col-lg-4 col-md-6 mx-auto">
               <div className="card border-0 shadow-lg h-100 overflow-hidden position-relative" 
-                   style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
+                   style={{background: 'linear-gradient(135deg,rgb(250, 193, 35) 0%,rgb(172, 100, 6) 100%)', transform: 'translateY(0)', transition: 'all 0.3s ease'}}
                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div className="card-body text-white p-4">

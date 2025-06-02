@@ -117,10 +117,7 @@ async def crear_prestamo(prestamo: PrestamoCreate, db: Session = Depends(get_db)
     db.add(db_prestamo)
     db.commit()
     db.refresh(db_prestamo)
-    
-    # Actualizar el estado del material a "Prestado"
-    await actualizar_estado_material(prestamo.material_id, "prestado")
-    
+
     return db_prestamo
 
 @router.get("/", response_model=PaginatedPrestamoResponse)

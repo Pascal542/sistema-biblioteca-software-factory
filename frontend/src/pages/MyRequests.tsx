@@ -53,47 +53,53 @@ const MyRequests = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        await fetchUserData();
-        // Cargar solicitudes inmediatamente después de obtener datos del usuario
-        await fetchMySolicitudes();
+        const fetchedUserData = await fetchUserData();
+        
+        if (fetchedUserData?.carne_identidad) {
+          await fetchMySolicitudes(fetchedUserData);
+        } else {
+          console.error('No se pudo obtener carne_identidad del usuario');
+          setError('No se pudo obtener el carnet de identidad del usuario');
+          setLoading(false);
+        }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Error al cargar los datos iniciales.');
+        setLoading(false);
       }
     };
-
+  
     fetchData();
   }, []);
-
-  // Remover el segundo useEffect que dependía de userData
-  // useEffect(() => {
-  //   if (userData?.carne_identidad) {
-  //     fetchMySolicitudes();
-  //   }
-  // }, [userData]);
 
   const fetchUserData = async () => {
     try {
       const response = await api.get('/auth/me');
-      setUserData(response.data);
+      const fetchedUserData = response.data;
+      console.log('User data fetched:', fetchedUserData);
+      console.log(user);
+      setUserData(fetchedUserData);
+      return fetchedUserData;
     } catch (err: unknown) {
       console.error('Error fetching user data:', err);
       setError('Error al obtener los datos del usuario. Intente nuevamente.');
+      throw err;
     }
   };
-
-  const fetchMySolicitudes = async () => {
+  
+  const fetchMySolicitudes = async (userDataParam?: User) => {
     try {
-      // Usar el email del usuario autenticado en lugar de carne_identidad
-      if (!user?.email) {
-        setError('Usuario no autenticado');
+      const currentUserData = userDataParam || userData;
+      
+      if (!currentUserData?.carne_identidad) {
+        console.error('No se pudo obtener el carnet de identidad del usuario');
+        setError('No se pudo obtener el carnet de identidad del usuario');
         return;
       }
 
-      // Usar el endpoint correcto que busca por email
-      const response = await api.get(`/solicitudes/usuario-email/${user.email}`);
+      const url = `/solicitudes/usuario-dni/${currentUserData.carne_identidad}`;
+      const response = await api.get(url);
       
-      // La respuesta es paginada, así que usar response.data.data
       const solicitudesData = response.data.data || [];
       setSolicitudes(solicitudesData);
       
@@ -102,38 +108,31 @@ const MyRequests = () => {
         .filter((id: number) => id !== undefined && id !== null);
 
       const uniqueIds = [...new Set(materialIds)] as number[];
-      console.log("Material IDs encontrados:", uniqueIds);
+      
       const idsToFetch = uniqueIds.filter(id => !materialTitles[id]);
       
       if (idsToFetch.length > 0) {
         await fetchMaterialTitles(idsToFetch);
       }
+      
     } catch (err) {
-      console.error('Error fetching solicitudes:', err);
+      console.error('Error en fetchMySolicitudes:', err);
       setError('Error al cargar sus solicitudes.');
     } finally {
       setLoading(false);
     }
   };
 
-
   const fetchMaterialTitles = async (materialIds: number[]) => {
     try {
       const newTitles = {...materialTitles};
-      console.log("Fetching titles for materials:", materialIds);
       
       for (const id of materialIds) {
         try {
           const response = await api.get(`/materiales/${id}`);
-          console.log(`Material ${id} response:`, response.data);
           
           if (response.data && response.data.titulo) {
-            if (response.data.id === id) {
-              newTitles[id] = `${response.data.titulo} (${response.data.tipo})`;
-            } else {
-              console.warn(`ID mismatch: requested ${id}, received ${response.data.id}`);
-              newTitles[id] = `${response.data.titulo} (${response.data.tipo})`;
-            }
+            newTitles[id] = `${response.data.titulo} (${response.data.tipo})`;
           }
         } catch (error) {
           console.error(`Error fetching material ${id}:`, error);
@@ -141,7 +140,6 @@ const MyRequests = () => {
         }
       }
       
-      console.log("Updated titles:", newTitles);
       setMaterialTitles(newTitles);
     } catch (error) {
       console.error('Error fetching material titles:', error);
@@ -175,17 +173,10 @@ const MyRequests = () => {
     setSelectedMaterial(null);
     setCurrentMaterialId(materialId);
     
-    console.log("Cargando materiales de  ID:", materialId);
-    
     try {
       const response = await api.get(`/materiales/${materialId}`);
-      console.log("Material details recivido:", response.data);
       
       if (response.data) {
-        if (response.data.id !== materialId) {
-          console.warn(`no ID en details: Se esperaba ${materialId}, tiene ${response.data.id}`);
-        }
-        
         setSelectedMaterial(response.data);
         
         if (response.data.titulo) {
@@ -271,7 +262,6 @@ const MyRequests = () => {
                       className="text-primary text-decoration-none" 
                       onClick={(e) => {
                         e.preventDefault();
-                        console.log("Clicked on material ID:", solicitud.material_id);
                         handleShowMaterialDetails(solicitud.material_id);
                       }}
                     >
@@ -300,7 +290,7 @@ const MyRequests = () => {
                         {cancellingId === solicitud.id ? (
                           <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         ) : (
-                          <i className="bi bi-x-circle"></i>
+                          <i className=""></i>
                         )}
                         {' '}Cancelar
                       </button>

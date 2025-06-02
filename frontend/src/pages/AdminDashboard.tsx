@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -34,32 +33,34 @@ const AdminDashboard = () => {
         </div>
       </nav>
 
-      <div className="container py-4">
-        <div className="row mb-4">
+      <div className="container py-5">
+        <div className="row mb-5">
           <div className="col">
-            <h2>
-              <i className="bi bi-grid-1x2 me-2"></i>
+            <h2 className="fw-bold text-dark">
+              <i className="bi bi-grid-1x2 me-3"></i>
               Panel de Administración
             </h2>
-            <p className="text-muted">Gestione el sistema de biblioteca</p>
+            <p className="text-muted fs-5">Gestione el sistema de biblioteca de manera eficiente</p>
           </div>
         </div>
 
-        <div className="row">
+        <div className="row g-4 justify-content-center">
           
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm">
-              <div className="card-body">
-                <div className="text-center mb-3">
-                  <i className="bi bi-journal-plus text-primary" style={{ fontSize: '2.5rem' }}></i>
+          <div className="col-md-4">
+            <div className="card h-100 shadow border-0 rounded-3">
+              <div className="card-body p-4">
+                <div className="text-center mb-4">
+                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                    <i className="bi bi-journal-plus text-primary" style={{ fontSize: '2.5rem' }}></i>
+                  </div>
                 </div>
-                <h5 className="card-title text-primary text-center">
+                <h5 className="card-title text-primary text-center fw-bold mb-3">
                   Gestión de Materiales
                 </h5>
-                <p className="card-text text-center">Consultar y gestionar todos los materiales disponibles</p>
+                <p className="card-text text-center text-muted">Consultar y gestionar todos los materiales disponibles</p>
               </div>
-              <div className="card-footer bg-white border-0 text-center pb-3">
-                <button className="btn btn-primary" onClick={() => navigate('/materials-management')}>
+              <div className="card-footer bg-white border-0 text-center pb-4">
+                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/materials-management')}>
                   <i className="bi bi-list-check me-2"></i>
                   Ver Materiales
                 </button>
@@ -67,65 +68,43 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm">
-              <div className="card-body">
-                <div className="text-center mb-3">
-                  <i className="bi bi-file-earmark-text text-primary" style={{ fontSize: '2.5rem' }}></i>
+          <div className="col-md-4">
+            <div className="card h-100 shadow border-0 rounded-3">
+              <div className="card-body p-4">
+                <div className="text-center mb-4">
+                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                    <i className="bi bi-file-earmark-text text-primary" style={{ fontSize: '2.5rem' }}></i>
+                  </div>
                 </div>
-                <h5 className="card-title text-primary text-center">
+                <h5 className="card-title text-primary text-center fw-bold mb-3">
                   Solicitudes
                 </h5>
-                <p className="card-text text-center">Administrar solicitudes de préstamos</p>
+                <p className="card-text text-center text-muted">Administrar solicitudes de préstamos</p>
               </div>
-              <div className="card-footer bg-white border-0 text-center pb-3">
-                <div className="d-flex gap-2 justify-content-center">
-                  <button className="btn btn-primary" onClick={() => navigate('/material-requests')}>
-                    <i className="bi bi-envelope me-2"></i>
-                    Solicitudes
-                  </button>
-
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm">
-              <div className="card-body">
-                <div className="text-center mb-3">
-                  <i className="bi bi-people text-primary" style={{ fontSize: '2.5rem' }}></i>
-                </div>
-                <h5 className="card-title text-primary text-center">
-                  Gestión de Usuarios
-                </h5>
-                <p className="card-text text-center">Administrar usuarios y credenciales</p>
-              </div>
-              <div className="card-footer bg-white border-0 text-center pb-3">
-                <button className="btn btn-primary" onClick={() => navigate('/admin-tools')}>
-                  <i className="bi bi-gear-fill me-2"></i>
-                  Herramientas Admin
+              <div className="card-footer bg-white border-0 text-center pb-4">
+                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/material-requests')}>
+                  <i className="bi bi-envelope me-2"></i>
+                  Solicitudes
                 </button>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="row">
-
-          <div className="col-md-6 mb-4">
-            <div className="card h-100 shadow-sm">
-              <div className="card-body">
-                <div className="text-center mb-3">
-                  <i className="bi bi-clipboard2-check text-primary" style={{ fontSize: '2.5rem' }}></i>
+          <div className="col-md-4">
+            <div className="card h-100 shadow border-0 rounded-3">
+              <div className="card-body p-4">
+                <div className="text-center mb-4">
+                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
+                    <i className="bi bi-clipboard2-check text-primary" style={{ fontSize: '2.5rem' }}></i>
+                  </div>
                 </div>
-                <h5 className="card-title text-primary text-center">
+                <h5 className="card-title text-primary text-center fw-bold mb-3">
                   Materiales en Préstamo
                 </h5>
-                <p className="card-text text-center">Ver listado de préstamos activos</p>
+                <p className="card-text text-center text-muted">Ver listado de préstamos activos</p>
               </div>
-              <div className="card-footer bg-white border-0 text-center pb-3">
-                <button className="btn btn-primary" onClick={() => navigate('/loaned-materials')}>
+              <div className="card-footer bg-white border-0 text-center pb-4">
+                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/loaned-materials')}>
                   <i className="bi bi-bookmarks me-2"></i>
                   Ver Préstamos
                 </button>
@@ -135,7 +114,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <footer className="bg-dark text-light py-3 mt-5">
+      <footer className="bg-dark text-light py-4 mt-auto">
         <div className="container text-center">
           <p className="mb-0">&copy; 2025 Sistema de Biblioteca - Panel de Administración</p>
         </div>

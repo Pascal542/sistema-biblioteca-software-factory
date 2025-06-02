@@ -120,7 +120,7 @@ const CreateMaterialRequest = () => {
     const searchMaterials = useCallback(async (term: string, page: number = 1) => {
         try {
             setSearching(true);
-            
+            console.log(user)
             // Usar la misma lógica de MaterialsManagement
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -228,15 +228,22 @@ const CreateMaterialRequest = () => {
             setTimeout(() => {
                 navigate('/my-requests');
             }, 2000);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('❌ Error completo:', err);
-            console.error('❌ Error response:', err.response?.data);
-            console.error('❌ Error status:', err.response?.status);
+            
+            // Type guard to check if err is an axios error
+            if (err && typeof err === 'object' && 'response' in err) {
+                const axiosError = err as { response?: { data?: { detail?: string }; status?: number } };
+                console.error('❌ Error response:', axiosError.response?.data);
+                console.error('❌ Error status:', axiosError.response?.status);
 
-            if (err.response?.data?.detail) {
-                setError(`Error: ${err.response.data.detail}`);
-            } else if (err.response?.status === 400) {
-                setError('Error: El material no está disponible o no tiene ejemplares suficientes.');
+                if (axiosError.response?.data?.detail) {
+                    setError(`Error: ${axiosError.response.data.detail}`);
+                } else if (axiosError.response?.status === 400) {
+                    setError('Error: El material no está disponible o no tiene ejemplares suficientes.');
+                } else {
+                    setError('Error al crear la solicitud. Por favor, inténtelo de nuevo.');
+                }
             } else {
                 setError('Error al crear la solicitud. Por favor, inténtelo de nuevo.');
             }
