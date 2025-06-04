@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/axiosInstance';
+import MaterialDetailModal from '../components/MaterialDetailModal';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import '../styles/MaterialsManagement.css';
 
 interface Material {
@@ -46,10 +49,9 @@ const MaterialsManagement = () => {
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
     page: 1,
-    size: 10,
+    size: 6,
     pages: 1
   });
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     titulo: '',
@@ -60,6 +62,7 @@ const MaterialsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState<MaterialStats | null>(null);
   const [activeType, setActiveType] = useState<'all' | 'libro' | 'revista' | 'acta de congreso'>('all');
+  const [currentMaterialId, setCurrentMaterialId] = useState<number | null>(null);
 
   const fetchMaterials = async (page = pagination.page) => {
     setLoading(true);
@@ -73,7 +76,7 @@ const MaterialsManagement = () => {
 
       const params = new URLSearchParams({
         page: page.toString(),
-        size: '10'
+        size: '6'
       });
 
       const response = await api.get(`${endpoint}?${params}`);
@@ -82,7 +85,7 @@ const MaterialsManagement = () => {
         setMaterials(response.data.data);
         setPagination({
           ...response.data.pagination,
-          size: 10
+          size: 6
         });
       } else {
         throw new Error('Formato de respuesta inesperado');
@@ -103,7 +106,7 @@ const MaterialsManagement = () => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        size: '10',
+        size: '6',
         titulo: searchTerm.trim()
       });
 
@@ -117,7 +120,7 @@ const MaterialsManagement = () => {
         setMaterials(response.data.data);
         setPagination({
           ...response.data.pagination,
-          size: 10
+          size: 6
         });
       } else {
         throw new Error('Formato de respuesta inesperado');
@@ -138,7 +141,7 @@ const MaterialsManagement = () => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        size: '10'
+        size: '6'
       });
 
       Object.entries(filters).forEach(([key, value]) => {
@@ -157,7 +160,7 @@ const MaterialsManagement = () => {
         setMaterials(response.data.data);
         setPagination({
           ...response.data.pagination,
-          size: 10
+          size: 6
         });
       } else {
         throw new Error('Formato de respuesta inesperado');
@@ -194,39 +197,48 @@ const MaterialsManagement = () => {
   useEffect(() => {
     performSearch();
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType]);
 
   useEffect(() => {
     performSearch(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, searchTerm]);
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
-  };
 
   const getStatusBadge = (estado: string, activo: boolean) => {
     if (!activo) {
-      return <span className="status-badge inactive">Inactivo</span>;
+      return <span className="badge bg-secondary">Inactivo</span>;
     }
     return estado === 'disponible' ? 
-      <span className="status-badge available">Disponible</span> : 
-      <span className="status-badge unavailable">No Disponible</span>;
+      <span className="badge bg-success">Disponible</span> : 
+      <span className="badge bg-danger">No Disponible</span>;
   };
 
   const getTypeBadge = (tipo: string) => {
-    const typeClass = tipo === 'libro' ? 'book' : tipo === 'revista' ? 'magazine' : 'proceeding';
-    return <span className={`type-badge ${typeClass}`}>{tipo}</span>;
+    const typeMap = {
+      'libro': { class: 'bg-primary', icon: 'bi-book' },
+      'revista': { class: 'bg-info', icon: 'bi-newspaper' },
+      'acta de congreso': { class: 'bg-warning', icon: 'bi-file-text' }
+    };
+    const typeInfo = typeMap[tipo as keyof typeof typeMap] || { class: 'bg-secondary', icon: 'bi-file' };
+    
+    return (
+      <span className={`badge ${typeInfo.class}`}>
+        <i className={`bi ${typeInfo.icon} me-1`}></i>
+        {tipo}
+      </span>
+    );
   };
 
   const handleViewDescription = (material: Material) => {
-    setSelectedMaterial(material);
+    setCurrentMaterialId(material.id);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setSelectedMaterial(null);
+    setCurrentMaterialId(null);
   };
 
   const clearFilters = () => {
@@ -328,145 +340,243 @@ const MaterialsManagement = () => {
   };
   
   return (
-    <div className="materials-management">
-      <div className="materials-header align-items-center">
-        <div className="header-left">
-          <button className="back-btn" onClick={() => navigate(-1)} title="Volver">
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <h3>Gestión de Materiales</h3>
-          {stats && (
-            <div className="stats-summary">
-
-              <div className="type-filter d-flex align-items-center">
-                <button
-                  className={`type-btn ${activeType === 'all' ? 'active' : ''}`}
-                  onClick={() => handleTypeChange('all')}
-                >
-                  <i className="fas fa-list"></i>
-                  Todos
-                </button>
-                <button
-                  className={`type-btn ${activeType === 'libro' ? 'active' : ''}`}
-                  onClick={() => handleTypeChange('libro')}
-                >
-                  <i className="fas fa-book"></i>
-                  Libros
-                </button>
-                <button
-                  className={`type-btn ${activeType === 'revista' ? 'active' : ''}`}
-                  onClick={() => handleTypeChange('revista')}
-                >
-                  <i className="fas fa-newspaper"></i>
-                  Revistas
-                </button>
-                <button
-                  className={`type-btn ${activeType === 'acta de congreso' ? 'active' : ''}`}
-                  onClick={() => handleTypeChange('acta de congreso')}
-                >
-                  <i className="fas fa-file-alt"></i>
-                  Actas
-                </button>
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input
-                    type="text"
-                    placeholder="Buscar materiales..."
-                    value={searchTerm}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button className="clear-search" onClick={() => setSearchTerm('')}>
-                      <i className="fas fa-times"></i>
-                    </button>
-                  )}
-
-                </div>
-                <span className="results-count">
-                  {pagination.total} resultado{pagination.total !== 1 ? 's' : ''} encontrado{pagination.total !== 1 ? 's' : ''}
-                </span>
+    <div className="min-vh-100" style={{background: 'linear-gradient(135deg,rgb(255, 255, 255) 100%,rgb(255, 255, 255) 100%)'}}>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-bottom">
+        <div className="container py-2">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <button 
+                className="btn btn-outline-secondary btn-sm me-2" 
+                onClick={() => navigate(-1)}
+                title="Volver"
+              >
+                <i className="bi bi-arrow-left"></i>
+              </button>
+              <div>
+                <h5 className="mb-0">Catálogo de Materiales</h5>
+                <small className="text-muted">Explora nuestra colección digital</small>
               </div>
             </div>
-          )}
+            
+            {stats && (
+              <div className="d-flex gap-3">
+                <div className="text-center">
+                  <div className="fw-bold text-primary small">{stats.total_materiales}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Total</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-success small">{stats.materiales_disponibles}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Disponibles</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-warning small">{stats.materiales_prestados}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Prestados</small>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-  
-      <div className="results-info">
-        
-      </div>
-  
-      {error && (
-        <div className="error-message">
-          <i className="fas fa-exclamation-triangle"></i>
-          {error}
-        </div>
-      )}
-  
-      {loading ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <span>Cargando materiales...</span>
-        </div>
-      ) : (
-        <>
-          {materials.length === 0 ? (
-            <div className="empty-state">
-              <i className="fas fa-search"></i>
-              <h3>No se encontraron materiales</h3>
-              <p>Intenta ajustar los filtros o la búsqueda</p>
+
+      {/* Filters and Search */}
+      <div className="bg-white border-bottom">
+        <div className="container py-2">
+          <div className="row g-2 align-items-center">
+            <div className="col-md-6">
+              <div className="btn-group btn-group-sm" role="group">
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="typeFilter" 
+                  id="all" 
+                  checked={activeType === 'all'}
+                  onChange={() => handleTypeChange('all')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="all">
+                  <i className="bi bi-collection me-1"></i>Todos
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="typeFilter" 
+                  id="libro" 
+                  checked={activeType === 'libro'}
+                  onChange={() => handleTypeChange('libro')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="libro">
+                  <i className="bi bi-book me-1"></i>Libros
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="typeFilter" 
+                  id="revista" 
+                  checked={activeType === 'revista'}
+                  onChange={() => handleTypeChange('revista')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="revista">
+                  <i className="bi bi-newspaper me-1"></i>Revistas
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="typeFilter" 
+                  id="acta" 
+                  checked={activeType === 'acta de congreso'}
+                  onChange={() => handleTypeChange('acta de congreso')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="acta">
+                  <i className="bi bi-file-text me-1"></i>Actas
+                </label>
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="table-container">
-                <table className="materials-table">
-                  <thead>
+            
+            <div className="col-md-4">
+              <div className="input-group input-group-sm">
+                <span className="input-group-text">
+                  <i className="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Buscar materiales..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+                {searchTerm && (
+                  <button 
+                    className="btn btn-outline-secondary" 
+                    onClick={() => setSearchTerm('')}
+                  >
+                    <i className="bi bi-x"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="col-md-2 text-end">
+              <small className="text-muted" style={{fontSize: '0.8rem'}}>
+                {pagination.total} resultado{pagination.total !== 1 ? 's' : ''}
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="container py-3">
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary mb-3" role="status">
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+            <p className="text-muted">Cargando materiales...</p>
+          </div>
+        ) : materials.length === 0 ? (
+          <div className="text-center py-5">
+            <i className="bi bi-search display-1 text-muted mb-3"></i>
+            <h5>No se encontraron materiales</h5>
+            <p className="text-muted">Intenta ajustar los filtros o la búsqueda</p>
+          </div>
+        ) : (
+          <>
+            {/* Materials Cards for Mobile */}
+            <div className="d-md-none">
+              {materials.map((material) => (
+                <div key={material.id} className="card mb-3 shadow-sm">
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="card-title mb-0">{material.titulo}</h6>
+                      <span className="text-muted small">#{material.id}</span>
+                    </div>
+                    <p className="card-text text-muted small mb-2">{material.autor}</p>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      {getTypeBadge(material.tipo)}
+                      {getStatusBadge(material.estado, material.activo)}
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <small className="text-muted">
+                        <i className="bi bi-geo-alt me-1"></i>{material.ubicacion}
+                      </small>
+                      <div className="d-flex gap-2">
+                        <span className="badge bg-light text-dark">
+                          {material.cantidad}/{material.total}
+                        </span>
+                        <button 
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => handleViewDescription(material)}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Materials Table for Desktop */}
+            <div className="d-none d-md-block">
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead className="table-light">
                     <tr>
-                      <th>ID</th>
-                      <th>Título</th>
-                      <th>Autor</th>
-                      <th>Tipo</th>
-                      <th>Ubicación</th>
-                      <th>Estado</th>
-                      <th>Disponibilidad</th>
-                      <th>Fecha</th>
-                      <th>Acciones</th>
+                      <th style={{width: '35%'}}>Título</th>
+                      <th style={{width: '20%'}}>Autor</th>
+                      <th style={{width: '12%'}}>Tipo</th>
+                      <th style={{width: '15%'}}>Ubicación</th>
+                      <th style={{width: '10%'}}>Estado</th>
+                      <th style={{width: '8%'}}>Disponibles</th>
+                      <th style={{width: '80px'}}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {materials.map((material) => (
-                      <tr 
-                        key={material.id} 
-                        className={!material.activo ? 'inactive-row' : ''}
-                      >
-                        <td className="id-cell">#{material.id}</td>
-                        <td className="title-cell">
-                          <div className="title-content">
-                            <span className="title-text">{material.titulo}</span>
+                      <tr key={material.id} className={!material.activo ? 'table-secondary' : ''}>
+                        <td>
+                          <div 
+                            className="fw-medium text-truncate" 
+                            style={{maxWidth: '300px', cursor: 'pointer'}}
+                            title={material.titulo}
+                          >
+                            {material.titulo}
                           </div>
                         </td>
-                        <td className="author-cell">{material.autor}</td>
-                        <td className="type-cell">
-                          {getTypeBadge(material.tipo)}
+                        <td className="text-muted">
+                          <div className="text-truncate" style={{maxWidth: '150px'}} title={material.autor}>
+                            {material.autor}
+                          </div>
                         </td>
-                        <td className="location-cell">{material.ubicacion}</td>
-                        <td className="status-cell">
-                          {getStatusBadge(material.estado, material.activo)}
+                        <td>{getTypeBadge(material.tipo)}</td>
+                        <td>
+                          <small className="text-muted text-truncate d-block" style={{maxWidth: '120px'}} title={material.ubicacion}>
+                            <i className="bi bi-geo-alt me-1"></i>{material.ubicacion}
+                          </small>
                         </td>
-                        <td className="availability-cell">
-                          <span className={`availability-count ${material.cantidad > 0 ? 'available' : 'unavailable'}`}>
+                        <td>{getStatusBadge(material.estado, material.activo)}</td>
+                        <td>
+                          <span className={`badge ${material.cantidad > 0 ? 'bg-secondary' : 'bg-danger'}`}>
                             {material.cantidad}/{material.total}
                           </span>
                         </td>
-                        <td className="date-cell">
-                          {formatDate(material.fecha_adquisicion)}
-                        </td>
-                        <td className="actions-cell">
+                        <td>
                           <button 
-                            className="details-btn"
+                            className="btn btn-sm btn-outline-primary"
                             onClick={() => handleViewDescription(material)}
                             title="Ver detalles"
                           >
-                            <i className="fas fa-eye"></i>
+                            <i className="bi bi-eye"></i>
                           </button>
                         </td>
                       </tr>
@@ -474,85 +584,66 @@ const MaterialsManagement = () => {
                   </tbody>
                 </table>
               </div>
-  
-              {pagination.pages > 1 && (
-                <div className="pagination-container">
-                  <div className="pagination-info">
-                    Página {pagination.page} de {pagination.pages}
-                  </div>
-                  <div className="pagination">
-                    {renderPaginationButtons()}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-  
-      {showModal && selectedMaterial && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>
-                <i className="fas fa-info-circle"></i>
-                Detalles del Material
-              </h3>
-              <button className="close-btn" onClick={handleCloseModal}>
-                <i className="fas fa-times"></i>
-              </button>
             </div>
-            
-            <div className="modal-body">
-              <div className="detail-grid">
-                <div className="detail-item">
-                  <strong>ID:</strong>
-                  <span>{selectedMaterial.id}</span>
-                </div>
-                <div className="detail-item">
-                  <strong>Estado:</strong>
-                  {getStatusBadge(selectedMaterial.estado, selectedMaterial.activo)}
-                </div>
-                <div className="detail-item full-width">
-                  <strong>Título:</strong>
-                  <span>{selectedMaterial.titulo}</span>
-                </div>
-                <div className="detail-item">
-                  <strong>Autor:</strong>
-                  <span>{selectedMaterial.autor}</span>
-                </div>
-                <div className="detail-item">
-                  <strong>Tipo:</strong>
-                  {getTypeBadge(selectedMaterial.tipo)}
-                </div>
-                <div className="detail-item">
-                  <strong>Ubicación:</strong>
-                  <span>{selectedMaterial.ubicacion}</span>
-                </div>
-                <div className="detail-item">
-                  <strong>Disponibles:</strong>
-                  <span className={selectedMaterial.cantidad > 0 ? 'text-success' : 'text-danger'}>
-                    {selectedMaterial.cantidad}/{selectedMaterial.total}
-                  </span>
-                </div>
-                <div className="detail-item full-width">
-                  <strong>Fecha de Adquisición:</strong>
-                  <span>{formatDate(selectedMaterial.fecha_adquisicion)}</span>
-                </div>
-                <div className="detail-item full-width">
-                  <strong>Descripción:</strong>
-                  <div className="description">
-                    {selectedMaterial.descripcion || 'Sin descripción disponible'}
-                  </div>
-                </div>
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-muted">
+                  Página {pagination.page} de {pagination.pages}
+                </small>
+                <nav>
+                  <ul className="pagination pagination-sm mb-0">
+                    <li className={`page-item ${pagination.page === 1 ? 'disabled' : ''}`}>
+                      <button 
+                        className="page-link" 
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={pagination.page === 1}
+                      >
+                        <i className="bi bi-chevron-left"></i>
+                      </button>
+                    </li>
+                    
+                    {renderPaginationButtons().slice(1, -1).map((button, index) => (
+                      <li key={index} className={`page-item ${button.props?.className?.includes('active') ? 'active' : ''}`}>
+                        {button.type === 'button' ? (
+                          <button 
+                            className="page-link" 
+                            onClick={button.props.onClick}
+                          >
+                            {button.props.children}
+                          </button>
+                        ) : (
+                          <span className="page-link">{button.props.children}</span>
+                        )}
+                      </li>
+                    ))}
+                    
+                    <li className={`page-item ${pagination.page === pagination.pages ? 'disabled' : ''}`}>
+                      <button 
+                        className="page-link" 
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={pagination.page === pagination.pages}
+                      >
+                        <i className="bi bi-chevron-right"></i>
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Modal */}
+      <MaterialDetailModal
+        show={showModal}
+        materialId={currentMaterialId}
+        onClose={handleCloseModal}
+      />
     </div>
   );
-  
 };
 
 export default MaterialsManagement;

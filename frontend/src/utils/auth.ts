@@ -1,10 +1,3 @@
-const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-const CLAVE = 82641;
-
-const pseudoRandom = (seed: number): number => {
-  return Math.abs(Math.sin(seed) * 10000) % 1;
-};
-
 export const generateUsername = (userId: number): string => {
   return `user_${userId}_${Date.now().toString().slice(-6)}`;
 };

@@ -1,32 +1,13 @@
-#root {
-  max-height: 100dvh;
-  width: 100dvw !important;
+.App {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-:root {
-  --bs-primary: #2563eb;
-  --bs-primary-rgb: 37, 99, 235;
-  background-color: white !important;
-}
-
-.btn-primary {
-  background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-  border-color: #1d4ed8;
-}
-
-.btn-outline-light:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.text-primary {
-  color: var(--bs-primary) !important;
-}
-
-.bg-primary {
-  background-color: var(--bs-primary) !important;
+/* Asegurar que los contenedores de Bootstrap no causen overflow */
+.container-fluid {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 100%;
 }

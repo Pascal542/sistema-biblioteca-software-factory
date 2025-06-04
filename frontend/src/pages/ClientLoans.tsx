@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/axiosInstance';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 interface Prestamo {
   id: number;
@@ -51,6 +53,7 @@ const ClientLoans = () => {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUserData = async () => {
@@ -58,6 +61,7 @@ const ClientLoans = () => {
       const response = await api.get('/auth/me');
       const fetchedUserData = response.data;
       console.log(user);
+      console.log("Userdata", userData);
       setUserData(fetchedUserData);
       return fetchedUserData;
     } catch (err: unknown) {
@@ -91,196 +95,277 @@ const ClientLoans = () => {
 
   if (loading) {
     return (
-      <div className="container mt-5 text-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Cargando...</span>
+      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'}}>
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </div>
+          <p className="text-muted">Cargando su historial de préstamos...</p>
         </div>
-        <p className="mt-2">Cargando su historial de préstamos...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mt-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-          <i className="bi bi-clock-history me-2"></i>
-          Mi Historial de Préstamos
-        </h2>
-        <button 
-          className="btn btn-outline-secondary"
-          onClick={() => navigate('/user-dashboard')}
-        >
-          <i className="bi bi-arrow-left me-2"></i>
-          Volver al Dashboard
-        </button>
+    <div className="min-vh-100" style={{background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'}}>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-bottom">
+        <div className="container py-2">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <button 
+                className="btn btn-outline-secondary btn-sm me-2" 
+                onClick={() => navigate('/user-dashboard')}
+                title="Volver"
+              >
+                <i className="bi bi-arrow-left"></i>
+              </button>
+              <div>
+                <h5 className="mb-0">Mi Historial de Préstamos</h5>
+                <small className="text-muted">Consulta tus préstamos y devoluciones</small>
+              </div>
+            </div>
+            
+            {prestamos.length > 0 && (
+              <div className="d-flex gap-3">
+                <div className="text-center">
+                  <div className="fw-bold text-primary small">{prestamos.length}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Total</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-warning small">{activePrestamos}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Activos</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-success small">{returnedPrestamos}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Devueltos</small>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {userData && (
-        <div className="card mb-4">
-          <div className="card-body">
-            <h5 className="card-title">
-              <i className="bi bi-person me-2"></i>
-              Información del Usuario
-            </h5>
-            <div className="row">
-              <div className="col-md-6">
-                <p><strong>Nombre:</strong> {userData.nombre}</p>
-                <p><strong>Carné:</strong> {userData.carne_identidad}</p>
-              </div>
-              <div className="col-md-6">
-                <p><strong>Email:</strong> {userData.email}</p>
-                <p><strong>Dirección:</strong> {userData.direccion}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {error}
-        </div>
-      )}
-
+      {/* Filters */}
       {prestamos.length > 0 && (
-        <>
-          <div className="row mb-4">
-            <div className="col-md-4">
-              <div className="card text-center bg-light">
-                <div className="card-body">
-                  <h5 className="card-title text-primary">Total de Préstamos</h5>
-                  <h2 className="text-primary">{prestamos.length}</h2>
-                </div>
+        <div className="bg-white border-bottom">
+          <div className="container py-2">
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="btn-group btn-group-sm" role="group">
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="filter" 
+                  id="todos" 
+                  checked={filter === 'todos'}
+                  onChange={() => setFilter('todos')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="todos">
+                  <i className="bi bi-collection me-1"></i>
+                  Todos ({prestamos.length})
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="filter" 
+                  id="activos" 
+                  checked={filter === 'activos'}
+                  onChange={() => setFilter('activos')}
+                />
+                <label className="btn btn-outline-warning" htmlFor="activos">
+                  <i className="bi bi-clock me-1"></i>
+                  Activos ({activePrestamos})
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="filter" 
+                  id="devueltos" 
+                  checked={filter === 'devueltos'}
+                  onChange={() => setFilter('devueltos')}
+                />
+                <label className="btn btn-outline-success" htmlFor="devueltos">
+                  <i className="bi bi-check-circle me-1"></i>
+                  Devueltos ({returnedPrestamos})
+                </label>
               </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card text-center bg-warning bg-opacity-10">
-                <div className="card-body">
-                  <h5 className="card-title text-warning">Préstamos Activos</h5>
-                  <h2 className="text-warning">{activePrestamos}</h2>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card text-center bg-success bg-opacity-10">
-                <div className="card-body">
-                  <h5 className="card-title text-success">Préstamos Devueltos</h5>
-                  <h2 className="text-success">{returnedPrestamos}</h2>
-                </div>
-              </div>
+              
+              <small className="text-muted">
+                {filteredPrestamos.length} préstamo{filteredPrestamos.length !== 1 ? 's' : ''}
+              </small>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4>Resultados ({filteredPrestamos.length})</h4>
-            <div className="btn-group" role="group">
-              <input 
-                type="radio" 
-                className="btn-check" 
-                name="filter" 
-                id="todos" 
-                checked={filter === 'todos'}
-                onChange={() => setFilter('todos')}
-              />
-              <label className="btn btn-outline-primary" htmlFor="todos">
-                Todos ({prestamos.length})
-              </label>
-
-              <input 
-                type="radio" 
-                className="btn-check" 
-                name="filter" 
-                id="activos" 
-                checked={filter === 'activos'}
-                onChange={() => setFilter('activos')}
-              />
-              <label className="btn btn-outline-warning" htmlFor="activos">
-                Activos ({activePrestamos})
-              </label>
-
-              <input 
-                type="radio" 
-                className="btn-check" 
-                name="filter" 
-                id="devueltos" 
-                checked={filter === 'devueltos'}
-                onChange={() => setFilter('devueltos')}
-              />
-              <label className="btn btn-outline-success" htmlFor="devueltos">
-                Devueltos ({returnedPrestamos})
-              </label>
-            </div>
+      <div className="container py-3">
+        {error && (
+          <div className="alert alert-danger alert-dismissible" role="alert">
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            {error}
           </div>
+        )}
 
-          <div className="table-responsive">
-            <table className="table table-striped table-hover">
-              <thead className="table-light">
-                <tr>
-                  <th>ID</th>
-                  <th>Material</th>
-                  <th>Fecha Préstamo</th>
-                  <th>Fecha Límite</th>
-                  <th>Fecha Devolución</th>
-                  <th>Estado</th>
-                  <th>Multa</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPrestamos.map((prestamo) => (
-                  <tr key={prestamo.id}>
-                    <td>{prestamo.id}</td>
-                    <td>
-                      <div>
-                        <strong>{prestamo.titulo}</strong>
-                        <br />
-                        <small className="text-muted">{prestamo.autor}</small>
-                      </div>
-                    </td>
-                    <td>{new Date(prestamo.fecha_prestamo).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`${
-                        prestamo.estado === 'activo' && new Date(prestamo.fecha_limite) < new Date()
-                          ? 'text-danger fw-bold'
-                          : ''
-                      }`}>
-                        {new Date(prestamo.fecha_limite).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td>
-                      {prestamo.fecha_devolucion 
-                        ? new Date(prestamo.fecha_devolucion).toLocaleDateString()
-                        : '-'
-                      }
-                    </td>
-                    <td>
+        {prestamos.length === 0 ? (
+          <div className="text-center py-5">
+            <i className="bi bi-clock-history display-1 text-muted mb-3"></i>
+            <h5>No tienes préstamos</h5>
+            <p className="text-muted mb-3">¡Solicita materiales para comenzar tu historial!</p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => navigate('/create-request')}
+            >
+              <i className="bi bi-plus-circle me-2"></i>
+              Solicitar material
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Cards para móvil */}
+            <div className="d-md-none">
+              {filteredPrestamos.map((prestamo) => (
+                <div key={prestamo.id} className="card mb-3 shadow-sm">
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="card-title mb-0">Préstamo #{prestamo.id}</h6>
                       <span className={`badge ${
                         prestamo.estado === 'activo' ? 'bg-warning' : 'bg-success'
                       }`}>
                         {prestamo.estado.toUpperCase()}
                       </span>
-                    </td>
-                    <td>
-                      {prestamo.multa && prestamo.multa > 0 
-                        ? `$${prestamo.multa.toFixed(2)}`
-                        : '-'
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                    </div>
+                    
+                    <div className="mb-2">
+                      <div className="fw-medium">{prestamo.titulo}</div>
+                      <small className="text-muted">{prestamo.autor}</small>
+                    </div>
+                    
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <small className="text-muted">
+                          <i className="bi bi-calendar-plus me-1"></i>
+                          Préstamo: {new Date(prestamo.fecha_prestamo).toLocaleDateString()}
+                        </small>
+                      </div>
+                      <div className="col-6">
+                        <small className={`${
+                          prestamo.estado === 'activo' && new Date(prestamo.fecha_limite) < new Date()
+                            ? 'text-danger fw-bold'
+                            : 'text-muted'
+                        }`}>
+                          <i className="bi bi-calendar-x me-1"></i>
+                          Límite: {new Date(prestamo.fecha_limite).toLocaleDateString()}
+                        </small>
+                      </div>
+                      {prestamo.fecha_devolucion && (
+                        <div className="col-6">
+                          <small className="text-muted">
+                            <i className="bi bi-calendar-check me-1"></i>
+                            Devuelto: {new Date(prestamo.fecha_devolucion).toLocaleDateString()}
+                          </small>
+                        </div>
+                      )}
+                      {prestamo.multa && prestamo.multa > 0 && (
+                        <div className="col-6">
+                          <small className="text-danger fw-bold">
+                            <i className="bi bi-exclamation-triangle me-1"></i>
+                            Multa: ${prestamo.multa.toFixed(2)}
+                          </small>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-      {!loading && prestamos.length === 0 && (
-        <div className="alert alert-info">
-          <i className="bi bi-info-circle me-2"></i>
-          No tiene historial de préstamos aún. ¡Solicite materiales para comenzar!
-        </div>
-      )}
+            {/* Tabla para desktop */}
+            <div className="d-none d-md-block">
+              <div className="card border-0 shadow-sm">
+                <div className="card-body p-0">
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{width: '80px'}}>ID</th>
+                          <th style={{width: '30%'}}>Material</th>
+                          <th style={{width: '12%'}}>Préstamo</th>
+                          <th style={{width: '12%'}}>Límite</th>
+                          <th style={{width: '12%'}}>Devolución</th>
+                          <th style={{width: '10%'}}>Estado</th>
+                          <th style={{width: '10%'}}>Multa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPrestamos.map((prestamo) => (
+                          <tr key={prestamo.id}>
+                            <td>
+                              <span className="badge bg-light text-dark">#{prestamo.id}</span>
+                            </td>
+                            <td>
+                              <div className="text-truncate" style={{maxWidth: '250px'}}>
+                                <div className="fw-medium" title={prestamo.titulo}>
+                                  {prestamo.titulo}
+                                </div>
+                                <small className="text-muted" title={prestamo.autor}>
+                                  {prestamo.autor}
+                                </small>
+                              </div>
+                            </td>
+                            <td>
+                              <small className="text-muted">
+                                {new Date(prestamo.fecha_prestamo).toLocaleDateString()}
+                              </small>
+                            </td>
+                            <td>
+                              <small className={`${
+                                prestamo.estado === 'activo' && new Date(prestamo.fecha_limite) < new Date()
+                                  ? 'text-danger fw-bold'
+                                  : 'text-muted'
+                              }`}>
+                                {new Date(prestamo.fecha_limite).toLocaleDateString()}
+                                {prestamo.estado === 'activo' && new Date(prestamo.fecha_limite) < new Date() && (
+                                  <i className="bi bi-exclamation-triangle ms-1"></i>
+                                )}
+                              </small>
+                            </td>
+                            <td>
+                              <small className="text-muted">
+                                {prestamo.fecha_devolucion 
+                                  ? new Date(prestamo.fecha_devolucion).toLocaleDateString()
+                                  : '-'
+                                }
+                              </small>
+                            </td>
+                            <td>
+                              <span className={`badge ${
+                                prestamo.estado === 'activo' ? 'bg-warning' : 'bg-success'
+                              }`}>
+                                {prestamo.estado.toUpperCase()}
+                              </span>
+                            </td>
+                            <td>
+                              {prestamo.multa && prestamo.multa > 0 ? (
+                                <span className="text-danger fw-bold">
+                                  ${prestamo.multa.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-muted">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
