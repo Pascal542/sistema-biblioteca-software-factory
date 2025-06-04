@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 import logging
+BACKEND_URL = "http://192.168.1.200"
+# BACKEND_URL = "http://localhost"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,10 +22,10 @@ app.add_middleware(
 )
 
 # URLs de los servicios
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://localhost:8001")
-MATERIAL_SERVICE_URL = os.getenv("MATERIAL_SERVICE_URL", "http://localhost:8002")
-LOAN_SERVICE_URL = os.getenv("LOAN_SERVICE_URL", "http://localhost:8003")
-REQUEST_SERVICE_URL = os.getenv("REQUEST_SERVICE_URL", "http://localhost:8004")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", f'{BACKEND_URL}:8001')
+MATERIAL_SERVICE_URL = os.getenv("MATERIAL_SERVICE_URL", f'{BACKEND_URL}:8002')
+LOAN_SERVICE_URL = os.getenv("LOAN_SERVICE_URL", f'{BACKEND_URL}:8003')
+REQUEST_SERVICE_URL = os.getenv("REQUEST_SERVICE_URL", f'{BACKEND_URL}:8004')
 
 @app.get("/")
 async def read_root():

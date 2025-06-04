@@ -10,13 +10,15 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.solicitud_prestamo import SolicitudPrestamo
 from app.schemas.solicitud_prestamo import SolicitudPrestamoCreate, SolicitudPrestamoResponse, SolicitudPrestamoUpdate
+BACKEND_URL = "http://192.168.1.200"
+# BACKEND_URL = "http://localhost"
 
 router = APIRouter()
 
 # URLs de los servicios
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://localhost:8001")
-MATERIAL_SERVICE_URL = os.getenv("MATERIAL_SERVICE_URL", "http://localhost:8002")
-LOAN_SERVICE_URL = os.getenv("LOAN_SERVICE_URL", "http://localhost:8003")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", f'{BACKEND_URL}:8001')
+MATERIAL_SERVICE_URL = os.getenv("MATERIAL_SERVICE_URL", f'{BACKEND_URL}:8002')
+LOAN_SERVICE_URL = os.getenv("LOAN_SERVICE_URL", f'{BACKEND_URL}:8003')
 
 # Esquemas para paginación
 class PaginationInfo(BaseModel):
