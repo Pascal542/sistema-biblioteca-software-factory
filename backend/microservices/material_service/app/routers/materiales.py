@@ -35,6 +35,7 @@ class PaginatedMaterialDisponibleResponse(BaseModel):
 
 class MaterialEnPrestamo(BaseModel):
     tipo: str
+    subtipo: Optional[str]
     titulo: str
     autor: str
     cantidad_prestada: int
@@ -58,6 +59,7 @@ def obtener_materiales(
     titulo: Optional[str] = Query(None, description="Filtrar por título"),
     autor: Optional[str] = Query(None, description="Filtrar por autor"),
     tipo: Optional[str] = Query(None, description="Filtrar por tipo"),
+    subtipo: Optional[str] = Query(None, description="Filtrar por subtipo"),
     estado: Optional[str] = Query(None, description="Filtrar por estado"),
     db: Session = Depends(get_db)
 ):
@@ -77,6 +79,8 @@ def obtener_materiales(
         query = query.filter(Material.autor.ilike(f"%{autor}%"))
     if tipo:
         query = query.filter(Material.tipo == tipo)
+    if subtipo:
+        query = query.filter(Material.subtipo == subtipo)
     if estado:
         query = query.filter(Material.estado == estado)
     
@@ -215,6 +219,7 @@ def buscar_materiales_avanzado(
     titulo: Optional[str] = Query(None, description="Filtrar por título"),
     autor: Optional[str] = Query(None, description="Filtrar por autor"),
     tipo: Optional[str] = Query(None, description="Filtrar por tipo"),
+    subtipo: Optional[str] = Query(None, description="Filtrar por subtipo"),
     estado: Optional[str] = Query(None, description="Filtrar por estado"),
     db: Session = Depends(get_db)
 ):
@@ -234,6 +239,8 @@ def buscar_materiales_avanzado(
         query = query.filter(Material.autor.ilike(f"%{autor}%"))
     if tipo:
         query = query.filter(Material.tipo == tipo)
+    if subtipo:
+        query = query.filter(Material.subtipo == subtipo)
     if estado:
         query = query.filter(Material.estado == estado)
     

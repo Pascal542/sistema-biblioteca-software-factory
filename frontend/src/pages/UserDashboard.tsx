@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useAuth } from '../context/AuthContext';
+import UserProfileModal from '../components/UserProfileModal';
 
 const UserDashboard = () => {
   const { user, logout, role } = useAuth();
   const navigate = useNavigate();
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     if (role !== 'usuario') {
@@ -17,6 +19,14 @@ const UserDashboard = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleShowProfile = () => {
+    setShowProfileModal(true);
+  };
+
+  const handleCloseProfile = () => {
+    setShowProfileModal(false);
   };
 
   if (!user) {
@@ -51,10 +61,16 @@ const UserDashboard = () => {
                     data-bs-toggle="dropdown" aria-expanded="false">
               <i className="bi bi-person-circle me-2"></i>
               <span>{user.nombre}</span>
-            </button>
-            <ul className="dropdown-menu dropdown-menu-end shadow border-0">
-              <li><a className="dropdown-item" href="#"><i className="bi bi-person me-2"></i>Mi Perfil</a></li>
-              <li><a className="dropdown-item" href="#"><i className="bi bi-gear me-2"></i>Configuración</a></li>
+            </button>            <ul className="dropdown-menu dropdown-menu-end shadow border-0">
+              <li>
+                <button 
+                  className="dropdown-item" 
+                  onClick={handleShowProfile}
+                  type="button"
+                >
+                  <i className="bi bi-person me-2"></i>Mi Perfil
+                </button>
+              </li>
               <li><hr className="dropdown-divider" /></li>
               <li>
                 <button onClick={handleLogout} className="dropdown-item text-danger">
@@ -233,8 +249,13 @@ const UserDashboard = () => {
         }
         .navbar-brand h5 {
           font-weight: 600;
-        }
-      `}</style>
+        }      `}</style>
+
+      {/* User Profile Modal */}
+      <UserProfileModal 
+        show={showProfileModal} 
+        onClose={handleCloseProfile} 
+      />
     </div>
   );
 };

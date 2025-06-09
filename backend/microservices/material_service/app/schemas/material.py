@@ -11,6 +11,7 @@ class MaterialBase(BaseModel):
     estado: str
     cantidad: int
     total: int
+    año_publicacion: int
 
 class MaterialCreate(MaterialBase):
     pass
@@ -24,11 +25,13 @@ class MaterialUpdate(BaseModel):
     estado: Optional[str] = None
     cantidad: Optional[int] = None
     total: Optional[int] = None
+    año_publicacion: Optional[int] = None
 
 class MaterialResponse(MaterialBase):
     id: int
     fecha_adquisicion: datetime
     activo: bool
+    factor_estancia: float
     
     class Config:
         from_attributes = True

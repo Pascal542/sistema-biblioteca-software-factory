@@ -22,6 +22,15 @@ app.add_middleware(
 # Include routers
 app.include_router(prestamos.router, prefix="/prestamos", tags=['Loans'])
 
+# Add a route to match frontend expectation
+@app.get("/api/materiales/en-prestamo")
+async def materiales_en_prestamo():
+    """Redirect to the actual endpoint"""
+    from app.routers.prestamos import obtener_materiales_en_prestamo
+    from app.database import get_db
+    db = next(get_db())
+    return await obtener_materiales_en_prestamo(db)
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Loan Service"}

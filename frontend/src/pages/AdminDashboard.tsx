@@ -13,112 +13,146 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-vh-100 bg-light">
-      <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div className="min-vh-100" style={{background: 'linear-gradient(135deg, #f8f9fa 0%,rgb(239, 239, 233) 100%)'}}>
+      {/* Header */}
+      <nav className="navbar navbar-expand-lg navbar-dark shadow-lg" style={{background: 'linear-gradient(135deg, #853303 0%, #945c08 100%)'}}>
         <div className="container">
-          <a className="navbar-brand" href="#">
-            <i className="bi bi-book me-2"></i>
-            Sistema de Biblioteca - Administración
-          </a>
-          <div className="ms-auto d-flex align-items-center text-white">
-            <span className="me-3">
-              <i className="bi bi-person-circle me-2"></i>
-              {user?.nombre || user?.email} (Administrador)
+          <div className="navbar-brand d-flex align-items-center">
+            <div>
+              <h4 className="mb-0 text-white fw-bold">Panel Administrativo</h4>
+              <small className="text-white-50">Sistema de Biblioteca</small>
+            </div>
+          </div>
+          
+          <div className="d-flex align-items-center">
+            <span className="text-white me-3">
+              <i className="bi bi-person-badge me-2"></i>
+              {user?.nombre || user?.email}
             </span>
-            <button onClick={handleLogout} className="btn btn-outline-light btn-sm">
+            <button onClick={handleLogout} className="btn btn-light btn-sm">
               <i className="bi bi-box-arrow-right me-1"></i>
-              Cerrar Sesión
+              Salir
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="container py-5">
-        <div className="row mb-5">
-          <div className="col">
-            <h2 className="fw-bold text-dark">
-              <i className="bi bi-grid-1x2 me-3"></i>
-              Panel de Administración
-            </h2>
-            <p className="text-muted fs-5">Gestione el sistema de biblioteca de manera eficiente</p>
+      <div className="container py-2">
+        {/* Welcome Section */}
+        <div className="text-center mb-2">
+          <div className="bg-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+               style={{width: '80px', height: '80px'}}>
+            <i className="bi bi-gear-wide-connected text-primary" style={{fontSize: '2.5rem'}}></i>
           </div>
+          <h1 className="text-dark fw-bold mb-2">Bienvenido Administrador</h1>
         </div>
 
-        <div className="row g-4 justify-content-center">
-          
-          <div className="col-md-4">
-            <div className="card h-100 shadow border-0 rounded-3">
-              <div className="card-body p-4">
-                <div className="text-center mb-4">
-                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <i className="bi bi-journal-plus text-primary" style={{ fontSize: '2.5rem' }}></i>
-                  </div>
+        {/* Main Navigation Cards */}
+        <div className="row g-4 mb-5">
+          <div className="col-lg-4">
+            <div className="card h-100 border-0 shadow-lg admin-card" 
+                 onClick={() => navigate('/materials-management')}
+                 style={{cursor: 'pointer'}}>
+              <div className="card-body text-center p-4">
+                <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                     style={{width: '70px', height: '70px'}}>
+                  <i className="bi bi-collection text-primary" style={{fontSize: '2rem'}}></i>
                 </div>
-                <h5 className="card-title text-primary text-center fw-bold mb-3">
-                  Gestión de Materiales
-                </h5>
-                <p className="card-text text-center text-muted">Consultar y gestionar todos los materiales disponibles</p>
-              </div>
-              <div className="card-footer bg-white border-0 text-center pb-4">
-                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/materials-management')}>
-                  <i className="bi bi-list-check me-2"></i>
-                  Ver Materiales
-                </button>
+                <h4 className="card-title text-primary fw-bold mb-3">Gestión de Materiales</h4>
+                <p className="card-text text-muted">
+                  Administra el catálogo completo de materiales, libros y recursos de la biblioteca
+                </p>
+                <div className="mt-4">
+                  <span className="btn btn-primary btn-lg px-4">
+                    <i className="bi bi-arrow-right-circle me-2"></i>
+                    Acceder
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card h-100 shadow border-0 rounded-3">
-              <div className="card-body p-4">
-                <div className="text-center mb-4">
-                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <i className="bi bi-file-earmark-text text-primary" style={{ fontSize: '2.5rem' }}></i>
-                  </div>
+          <div className="col-lg-4">
+            <div className="card h-100 border-0 shadow-lg admin-card"
+                 onClick={() => navigate('/material-requests')}
+                 style={{cursor: 'pointer'}}>
+              <div className="card-body text-center p-4">
+                <div className="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                     style={{width: '70px', height: '70px'}}>
+                  <i className="bi bi-clipboard-check text-success" style={{fontSize: '2rem'}}></i>
                 </div>
-                <h5 className="card-title text-primary text-center fw-bold mb-3">
-                  Solicitudes
-                </h5>
-                <p className="card-text text-center text-muted">Administrar solicitudes de préstamos</p>
-              </div>
-              <div className="card-footer bg-white border-0 text-center pb-4">
-                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/material-requests')}>
-                  <i className="bi bi-envelope me-2"></i>
-                  Solicitudes
-                </button>
+                <h4 className="card-title text-success fw-bold mb-3">Solicitudes de Préstamo</h4>
+                <p className="card-text text-muted">
+                  Revisa y gestiona las solicitudes de préstamo enviadas por los usuarios
+                </p>
+                <div className="mt-4">
+                  <span className="btn btn-success btn-lg px-4">
+                    <i className="bi bi-arrow-right-circle me-2"></i>
+                    Revisar
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card h-100 shadow border-0 rounded-3">
-              <div className="card-body p-4">
-                <div className="text-center mb-4">
-                  <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                    <i className="bi bi-clipboard2-check text-primary" style={{ fontSize: '2.5rem' }}></i>
-                  </div>
+          <div className="col-lg-4">
+            <div className="card h-100 border-0 shadow-lg admin-card"
+                 onClick={() => navigate('/loaned-materials')}
+                 style={{cursor: 'pointer'}}>
+              <div className="card-body text-center p-4">
+                <div className="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                     style={{width: '70px', height: '70px'}}>
+                  <i className="bi bi-bookmark-star text-warning" style={{fontSize: '2rem'}}></i>
                 </div>
-                <h5 className="card-title text-primary text-center fw-bold mb-3">
-                  Materiales en Préstamo
-                </h5>
-                <p className="card-text text-center text-muted">Ver listado de préstamos activos</p>
-              </div>
-              <div className="card-footer bg-white border-0 text-center pb-4">
-                <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/loaned-materials')}>
-                  <i className="bi bi-bookmarks me-2"></i>
-                  Ver Préstamos
-                </button>
+                <h4 className="card-title text-warning fw-bold mb-3">Préstamos Activos</h4>
+                <p className="card-text text-muted">
+                  Controla y administra todos los préstamos activos y sus fechas de devolución
+                </p>
+                <div className="mt-4">
+                  <span className="btn btn-warning btn-lg px-4">
+                    <i className="bi bi-arrow-right-circle me-2"></i>
+                    Monitorear
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <footer className="bg-dark text-light py-4 mt-auto">
-        <div className="container text-center">
-          <p className="mb-0">&copy; 2025 Sistema de Biblioteca - Panel de Administración</p>
+      {/* Footer */}
+      <footer className="mt-5 py-4 bg-dark">
+        <div className="container">
+          <div className="row align-items-center">
+            <div className="col-md-6">
+              <h6 className="text-white mb-2">Sistema de Biblioteca SF</h6>
+              <p className="text-white-50 small mb-0">Panel de Administración</p>
+            </div>
+            <div className="col-md-6 text-md-end">
+              <p className="text-white-50 small mb-0">
+                &copy; 2025 Todos los derechos reservados
+              </p>
+            </div>
+          </div>
         </div>
       </footer>
+
+      <style>{`
+        .admin-card {
+          transition: all 0.3s ease;
+          border-radius: 15px;
+        }
+        .admin-card:hover {
+          transform: translateY(-10px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important;
+        }
+        .card-body {
+          border-radius: 15px;
+        }
+        .navbar {
+          backdrop-filter: blur(10px);
+        }
+      `}</style>
     </div>
   );
 };

@@ -14,7 +14,6 @@ interface Prestamo {
   fecha_limite: string;
   fecha_devolucion?: string;
   estado: 'activo' | 'devuelto';
-  multa?: number;
 }
 
 interface User {
@@ -34,15 +33,14 @@ const ClientLoans = () => {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'todos' | 'activos' | 'devueltos'>('todos');
   const [userData, setUserData] = useState<User | null>(null);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         const fetchedUserData = await fetchUserData();
-        if (fetchedUserData?.carne_identidad) {
-          await fetchMyLoans(fetchedUserData.carne_identidad);
+        if (fetchedUserData?.id) {
+          await fetchMyLoans(fetchedUserData.id);
         } else {
-          setError('No se pudo obtener el carné de identidad del usuario');
+          setError('No se pudo obtener el ID del usuario');
           setLoading(false);
         }
       } catch (err) {
@@ -70,10 +68,9 @@ const ClientLoans = () => {
       throw err;
     }
   };
-
-  const fetchMyLoans = async (carneIdentidad: string) => {
+  const fetchMyLoans = async (userId: number) => {
     try {
-      const response = await api.get(`/prestamos/cliente/${carneIdentidad}`);
+      const response = await api.get(`/prestamos/cliente/${userId}`);
       setPrestamos(response.data);
     } catch (err) {
       console.error('Error fetching loans:', err);
@@ -258,20 +255,11 @@ const ClientLoans = () => {
                           <i className="bi bi-calendar-x me-1"></i>
                           Límite: {new Date(prestamo.fecha_limite).toLocaleDateString()}
                         </small>
-                      </div>
-                      {prestamo.fecha_devolucion && (
+                      </div>                      {prestamo.fecha_devolucion && (
                         <div className="col-6">
                           <small className="text-muted">
                             <i className="bi bi-calendar-check me-1"></i>
                             Devuelto: {new Date(prestamo.fecha_devolucion).toLocaleDateString()}
-                          </small>
-                        </div>
-                      )}
-                      {prestamo.multa && prestamo.multa > 0 && (
-                        <div className="col-6">
-                          <small className="text-danger fw-bold">
-                            <i className="bi bi-exclamation-triangle me-1"></i>
-                            Multa: ${prestamo.multa.toFixed(2)}
                           </small>
                         </div>
                       )}
@@ -286,16 +274,14 @@ const ClientLoans = () => {
               <div className="card border-0 shadow-sm">
                 <div className="card-body p-0">
                   <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0">
-                      <thead className="table-light">
+                    <table className="table table-hover align-middle mb-0">                      <thead className="table-light">
                         <tr>
                           <th style={{width: '80px'}}>ID</th>
-                          <th style={{width: '30%'}}>Material</th>
-                          <th style={{width: '12%'}}>Préstamo</th>
-                          <th style={{width: '12%'}}>Límite</th>
-                          <th style={{width: '12%'}}>Devolución</th>
-                          <th style={{width: '10%'}}>Estado</th>
-                          <th style={{width: '10%'}}>Multa</th>
+                          <th style={{width: '35%'}}>Material</th>
+                          <th style={{width: '15%'}}>Préstamo</th>
+                          <th style={{width: '15%'}}>Límite</th>
+                          <th style={{width: '15%'}}>Devolución</th>
+                          <th style={{width: '15%'}}>Estado</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -338,22 +324,12 @@ const ClientLoans = () => {
                                   : '-'
                                 }
                               </small>
-                            </td>
-                            <td>
+                            </td>                            <td>
                               <span className={`badge ${
                                 prestamo.estado === 'activo' ? 'bg-warning' : 'bg-success'
                               }`}>
                                 {prestamo.estado.toUpperCase()}
                               </span>
-                            </td>
-                            <td>
-                              {prestamo.multa && prestamo.multa > 0 ? (
-                                <span className="text-danger fw-bold">
-                                  ${prestamo.multa.toFixed(2)}
-                                </span>
-                              ) : (
-                                <span className="text-muted">-</span>
-                              )}
                             </td>
                           </tr>
                         ))}

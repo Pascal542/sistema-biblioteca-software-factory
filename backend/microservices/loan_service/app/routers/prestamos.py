@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 import httpx
 import os
@@ -40,6 +40,30 @@ class MaterialPrestado(BaseModel):
     autor: str
     fecha_prestamo: datetime
     estado: str
+
+# Esquema para préstamo con detalles del material (respuesta específica para cliente)
+class PrestamoConDetalles(BaseModel):
+    id: int
+    material_id: int
+    titulo: str
+    autor: str
+    fecha_prestamo: datetime
+    fecha_limite: datetime
+    fecha_devolucion: Optional[datetime] = None
+    estado: str
+
+class PaginatedPrestamoConDetallesResponse(BaseModel):
+    data: List[PrestamoConDetalles]
+    pagination: PaginationInfo
+
+# Nueva clase para materiales en préstamo
+class MaterialEnPrestamo(BaseModel):
+    tipo: str
+    titulo: str
+    autor: str
+    cantidad_prestada: int
+    fecha_prestamo: datetime
+    factor_estancia: float
 
 # Verificar usuario y material usando solicitudes HTTP a los microservicios
 async def verificar_usuario(usuario_id: int):
@@ -336,3 +360,137 @@ def obtener_prestamos_vencidos(
             pages=pages
         )
     )
+
+# Endpoint para obtener préstamos por ID de usuario con detalles del material
+@router.get("/usuario/{usuario_id}/detalles", response_model=PaginatedPrestamoConDetallesResponse)
+async def obtener_prestamos_por_usuario_con_detalles(
+    usuario_id: int,
+    page: int = Query(1, ge=1, description="Número de página"),
+    size: int = Query(10, ge=1, le=100, description="Cantidad de elementos por página"),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene una lista paginada de préstamos realizados por un usuario específico,
+    incluyendo detalles del material (título, autor) y estado del préstamo.
+    """
+    # Calcular offset
+    skip = (page - 1) * size
+    
+    # Obtener el total de préstamos del usuario
+    total = db.query(func.count(Prestamo.id)).filter(Prestamo.usuario_id == usuario_id).scalar()
+    
+    # Obtener los préstamos del usuario con paginación
+    prestamos = db.query(Prestamo).filter(Prestamo.usuario_id == usuario_id).offset(skip).limit(size).all()
+    
+    # Obtener detalles de cada préstamo
+    resultado = []
+    for p in prestamos:
+        material_existe, material_data = await obtener_material(p.material_id)
+        if material_existe:            resultado.append(
+                PrestamoConDetalles(
+                    id=p.id,
+                    material_id=p.material_id,
+                    titulo=material_data["titulo"],
+                    autor=material_data["autor"],
+                    fecha_prestamo=p.fecha_prestamo,
+                    fecha_limite=p.fecha_devolucion_esperada,
+                    fecha_devolucion=p.fecha_devolucion_real,
+                    estado=p.estado
+                )
+            )
+    
+    # Calcular páginas
+    pages = (total + size - 1) // size if total > 0 else 1
+    
+    return PaginatedPrestamoConDetallesResponse(
+        data=resultado,
+        pagination=PaginationInfo(
+            total=total,
+            page=page,
+            size=size,
+            pages=pages
+        )
+    )
+
+# Endpoint para obtener préstamos por ID de usuario (endpoint compatible con frontend)
+@router.get("/cliente/{usuario_id}", response_model=List[PrestamoConDetalles])
+async def obtener_prestamos_cliente(
+    usuario_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene todos los préstamos realizados por un usuario específico,
+    incluyendo detalles del material. Endpoint compatible con ClientLoans frontend.
+    """
+    # Obtener todos los préstamos del usuario
+    prestamos = db.query(Prestamo).filter(Prestamo.usuario_id == usuario_id).all()
+    
+    # Obtener detalles de cada préstamo
+    resultado = []
+    for p in prestamos:
+        material_existe, material_data = await obtener_material(p.material_id)
+        if material_existe:            resultado.append(
+                PrestamoConDetalles(
+                    id=p.id,
+                    material_id=p.material_id,
+                    titulo=material_data["titulo"],
+                    autor=material_data["autor"],
+                    fecha_prestamo=p.fecha_prestamo,
+                    fecha_limite=p.fecha_devolucion_esperada,
+                    fecha_devolucion=p.fecha_devolucion_real,
+                    estado=p.estado.lower() if p.estado else "activo"
+                )
+            )
+    
+    return resultado
+
+@router.get("/materiales/en-prestamo", response_model=List[MaterialEnPrestamo])
+async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
+    """
+    Obtiene todos los materiales que están actualmente en préstamo
+    con información detallada del material y tiempo de préstamo.
+    """
+    # Obtener todos los préstamos activos
+    prestamos_activos = db.query(Prestamo).filter(Prestamo.estado == "Activo").all()
+    
+    # Dictionary to group by material_id and count loans
+    materiales_agrupados = {}
+    
+    for prestamo in prestamos_activos:
+        material_id = prestamo.material_id
+        if material_id not in materiales_agrupados:
+            materiales_agrupados[material_id] = {
+                'prestamos': [],
+                'cantidad': 0
+            }
+        materiales_agrupados[material_id]['prestamos'].append(prestamo)
+        materiales_agrupados[material_id]['cantidad'] += 1
+    
+    # Get material details and build response
+    resultado = []
+    for material_id, data in materiales_agrupados.items():
+        material_existe, material_data = await obtener_material(material_id)
+        if material_existe:
+            # Calculate average stay factor (days since loan)
+            total_dias = 0
+            for prestamo in data['prestamos']:
+                dias_prestamo = (datetime.now() - prestamo.fecha_prestamo).days
+                total_dias += dias_prestamo
+            
+            factor_estancia = total_dias / len(data['prestamos']) if data['prestamos'] else 0
+            
+            # Get the most recent loan date
+            fecha_prestamo_reciente = max(p.fecha_prestamo for p in data['prestamos'])
+            
+            resultado.append(
+                MaterialEnPrestamo(
+                    tipo=material_data.get("tipo", "No especificado"),
+                    titulo=material_data["titulo"],
+                    autor=material_data["autor"],
+                    cantidad_prestada=data['cantidad'],
+                    fecha_prestamo=fecha_prestamo_reciente,
+                    factor_estancia=factor_estancia
+                )
+            )
+    
+    return resultado

@@ -61,8 +61,8 @@ export const solicitudService = {
 };
 
 export const prestamoService = {
-  getByCliente: (carneIdentidad: string) => 
-    api.get(`/prestamos/cliente/${carneIdentidad}`),
+  getByCliente: (userId: number) => 
+    api.get(`/prestamos/cliente/${userId}`),
 };
 
 export default api;

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import api from '../services/axiosInstance';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/axiosInstance';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 interface Solicitud {
   id: number;
@@ -31,155 +33,142 @@ interface PrestamoDetalle {
   overdue: boolean;
 }
 
-interface PaginationData {
+interface PaginationInfo {
   total: number;
   page: number;
   size: number;
   pages: number;
 }
 
+interface RequestStats {
+  total_solicitudes: number;
+  solicitudes_pendientes: number;
+  solicitudes_aprobadas: number;
+  solicitudes_rechazadas: number;
+  solicitudes_canceladas: number;
+}
+
+interface ClienteData {
+  nombre: string;
+  carne_identidad: string;
+  direccion: string;
+}
+
+interface MaterialData {
+  titulo: string;
+}
+
+interface SolicitudResponse {
+  data?: Solicitud[];
+  solicitudes?: Solicitud[];
+  pagination?: PaginationInfo;
+}
+
+interface Prestamo {
+  estado: string;
+  material_id: number;
+  fecha_devolucion_esperada: string;
+  fecha_devolucion_real: string | null;
+}
+
+interface PrestamosResponse {
+  data?: Prestamo[];
+  prestamos?: Prestamo[];
+}
+
 const MaterialRequests = () => {
   const navigate = useNavigate();
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingPage, setLoadingPage] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    size: 6,
+    pages: 1
+  });
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [filterEstado, setFilterEstado] = useState<string>('');
   const [observaciones, setObservaciones] = useState<string>('');
   const [showObservacionesModal, setShowObservacionesModal] = useState(false);
   const [selectedSolicitudId, setSelectedSolicitudId] = useState<number | null>(null);
   const [selectedAction, setSelectedAction] = useState<'aprobar' | 'rechazar' | null>(null);
-  
-  // New pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [pagination, setPagination] = useState<PaginationData>({
-    total: 0,
-    page: 1,
-    size: 10,
-    pages: 1
-  });
-  
-  // New states for client detail modal
   const [showClientModal, setShowClientModal] = useState(false);
   const [clienteDetalle, setClienteDetalle] = useState<ClienteDetalle | null>(null);
   const [loadingCliente, setLoadingCliente] = useState(false);
-  
-  // New states for observation modal
   const [showObservacionModal, setShowObservacionModal] = useState(false);
   const [selectedObservacion, setSelectedObservacion] = useState<string>('');
-
-
-  interface ClienteData {
-    nombre: string;
-    carne_identidad: string;
-    direccion: string;
-  }
-
   const [clientesData, setClientesData] = useState<Record<number, ClienteData>>({});
+  const [stats, setStats] = useState<RequestStats | null>(null);
+  const [activeStatus, setActiveStatus] = useState<'all' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'>('all');
 
-  useEffect(() => {
-    const isInitialLoad = solicitudes.length === 0;
-    if (isInitialLoad) {
-      setLoading(true);
-    } else {
-      setLoadingPage(true);
-    }
-    fetchSolicitudes();
-  }, [filterEstado, currentPage, pageSize]);
-
-  const fetchSolicitudes = async () => {
-    const isInitialLoad = solicitudes.length === 0;
-    if (!isInitialLoad) {
-      setLoadingPage(true);
-    }
+  const fetchSolicitudes = async (page = pagination.page) => {
+    setLoading(true);
     setError('');
-    
     try {
-      console.log(clientesData);
-      let url = `/solicitudes?page=${currentPage}&size=${pageSize}`;
-      if (filterEstado) {
-        url += `&estado=${filterEstado}`;
+      const endpoint = '/solicitudes';
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: '6'
+      });
+
+      if (activeStatus !== 'all') {
+        params.append('estado', activeStatus);
       }
+
+      const response = await api.get<SolicitudResponse | Solicitud[]>(`${endpoint}?${params}`);
       
-      const response = await api.get(url);
-      
-      // Handle the paginated response structure
       const responseData = response.data;
-      let solicitudesData = [];
-      let paginationData = null;
+      let solicitudesData: Solicitud[] = [];
+      let paginationData: PaginationInfo | null = null;
       
-      // Check if response has pagination structure
-      if (responseData && typeof responseData === 'object') {
-        if (Array.isArray(responseData.data) && responseData.pagination) {
-          solicitudesData = responseData.data;
-          paginationData = responseData.pagination;
-        } else if (Array.isArray(responseData.solicitudes) && responseData.pagination) {
-          solicitudesData = responseData.solicitudes;
-          paginationData = responseData.pagination;
-        } else if (Array.isArray(responseData)) {
-          // Fallback for non-paginated response
-          solicitudesData = responseData;
+      if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+        const typedResponse = responseData as SolicitudResponse;
+        if (Array.isArray(typedResponse.data) && typedResponse.pagination) {
+          solicitudesData = typedResponse.data;
+          paginationData = typedResponse.pagination;
+        } else if (Array.isArray(typedResponse.solicitudes) && typedResponse.pagination) {
+          solicitudesData = typedResponse.solicitudes;
+          paginationData = typedResponse.pagination;
         } else {
-          console.error('Unexpected response structure:', responseData);
-          setError('Error: Estructura de respuesta inesperada del servidor.');
-          setSolicitudes([]);
-          return;
+          throw new Error('Formato de respuesta inesperado');
         }
-      }
-      
-      // Update pagination state
-      if (paginationData) {
-        setPagination(paginationData);
+      } else if (Array.isArray(responseData)) {
+        solicitudesData = responseData;
+        if (activeStatus !== 'all') {
+          solicitudesData = solicitudesData.filter(s => s.estado === activeStatus);
+        }
       } else {
-        // Fallback pagination for non-paginated responses
+        throw new Error('Formato de respuesta inesperado');
+      }
+
+      if (paginationData) {
+        setPagination({
+          ...paginationData,
+          size: 6
+        });
+      } else {
         setPagination({
           total: solicitudesData.length,
           page: 1,
-          size: solicitudesData.length,
-          pages: 1
+          size: 6,
+          pages: Math.ceil(solicitudesData.length / 6)
         });
       }
-      
-      // Ensure we have an array
-      if (!Array.isArray(solicitudesData)) {
-        console.error('Response is not an array:', solicitudesData);
-        setError('Error: Los datos recibidos no tienen el formato esperado.');
-        setSolicitudes([]);
-        return;
-      }
 
-      // Extract unique user IDs
       const userIds = [...new Set(solicitudesData.map((s: Solicitud) => s.usuario_id))];
-      
-      // Fetch user details for all unique user IDs in parallel
-      const usersPromises = userIds.map((userId: number) => 
-        api.get(`/usuarios/${userId}`).catch(() => ({ data: null }))
-      );
-      
-      // Fetch material details in parallel
       const materialesIds = [...new Set(solicitudesData.map((s: Solicitud) => s.material_id))];
-      const materialesPromises = materialesIds.map((id: number) => 
-        api.get(`/materiales/${id}`).catch(() => ({ data: null }))
-      );
       
-      // Execute both user and material requests in parallel
       const [usersResponses, materialesResponses] = await Promise.all([
-        Promise.all(usersPromises),
-        Promise.all(materialesPromises)
+        Promise.all(userIds.map((userId: number) => 
+          api.get<ClienteData>(`/usuarios/${userId}`).catch(() => ({ data: null }))
+        )),
+        Promise.all(materialesIds.map((id: number) => 
+          api.get<MaterialData>(`/materiales/${id}`).catch(() => ({ data: null }))
+        ))
       ]);
       
-      interface UserData {
-        nombre: string;
-        carne_identidad: string;
-        direccion: string;
-      }
-      const usersData: Record<number, UserData> = {};
-      interface MaterialData {
-        titulo: string;
-        // Add other fields returned by the API for materials if necessary
-      }
+      const usersData: Record<number, ClienteData> = {};
       const materialesData: Record<number, MaterialData> = {};
       
       usersResponses.forEach((response, index) => {
@@ -190,13 +179,13 @@ const MaterialRequests = () => {
       
       materialesResponses.forEach((response, index) => {
         if (response.data) {
+          console.log(clientesData)
           materialesData[materialesIds[index]] = response.data;
         }
       });
       
       setClientesData(usersData);
       
-      // Map solicitudes with user and material data
       const solicitudesConTitulos = solicitudesData.map((solicitud: Solicitud) => {
         const materialData = materialesData[solicitud.material_id];
         const userData = usersData[solicitud.usuario_id];
@@ -214,24 +203,43 @@ const MaterialRequests = () => {
       console.error('Error fetching solicitudes:', err);
       setError('Error al cargar las solicitudes.');
       setSolicitudes([]);
+      setPagination(prev => ({ ...prev, total: 0, pages: 1 }));
     } finally {
       setLoading(false);
-      setLoadingPage(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get<SolicitudResponse | Solicitud[]>('/solicitudes');
+      const allSolicitudes: Solicitud[] = Array.isArray(response.data) ? response.data : 
+                            (response.data as SolicitudResponse)?.data || (response.data as SolicitudResponse)?.solicitudes || [];
+      
+      const stats: RequestStats = {
+        total_solicitudes: allSolicitudes.length,
+        solicitudes_pendientes: allSolicitudes.filter((s: Solicitud) => s.estado === 'pendiente').length,
+        solicitudes_aprobadas: allSolicitudes.filter((s: Solicitud) => s.estado === 'aprobada').length,
+        solicitudes_rechazadas: allSolicitudes.filter((s: Solicitud) => s.estado === 'rechazada').length,
+        solicitudes_canceladas: allSolicitudes.filter((s: Solicitud) => s.estado === 'cancelada').length,
+      };
+      
+      setStats(stats);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
     }
   };
 
   const fetchClienteDetalle = async (userId: number, carne?: string, nombre?: string, direccion?: string) => {
     setLoadingCliente(true);
     try {
-      let userDetails = { nombre: nombre || '', carne: carne || '', direccion: direccion || '' };
+      let userDetails: ClienteData = { nombre: nombre || '', carne_identidad: carne || '', direccion: direccion || '' };
       
-      // Get user details by user ID
       try {
-        const userResponse = await api.get(`/usuarios/${userId}`);
+        const userResponse = await api.get<ClienteData>(`/usuarios/${userId}`);
         if (userResponse.data) {
           userDetails = {
             nombre: userResponse.data.nombre || nombre || `Usuario #${userId}`,
-            carne: userResponse.data.carne_identidad || carne || '',
+            carne_identidad: userResponse.data.carne_identidad || carne || '',
             direccion: userResponse.data.direccion || direccion || ''
           };
         }
@@ -239,27 +247,24 @@ const MaterialRequests = () => {
         console.log('Could not fetch user details, using provided data');
       }
 
-      // Fetch client's active loans and history using carne_identidad
-      let prestamosData = [];
-      if (userDetails.carne) {
+      let prestamosData: Prestamo[] = [];
+      if (userDetails.carne_identidad) {
         try {
-          const prestamosResponse = await api.get(`/prestamos?usuario=${userDetails.carne}`);
+          const prestamosResponse = await api.get<PrestamosResponse | Prestamo[]>(`/prestamos?usuario=${userDetails.carne_identidad}`);
           const responseData = prestamosResponse.data;
           
-          // Handle nested response structure
-          if (responseData && typeof responseData === 'object') {
-            if (Array.isArray(responseData.data)) {
-              prestamosData = responseData.data;
-            } else if (Array.isArray(responseData.prestamos)) {
-              prestamosData = responseData.prestamos;
-            } else if (Array.isArray(responseData)) {
-              prestamosData = responseData;
+          if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+            const typedResponse = responseData as PrestamosResponse;
+            if (Array.isArray(typedResponse.data)) {
+              prestamosData = typedResponse.data;
+            } else if (Array.isArray(typedResponse.prestamos)) {
+              prestamosData = typedResponse.prestamos;
             } else {
               prestamosData = [];
             }
-          }
-          
-          if (!Array.isArray(prestamosData)) {
+          } else if (Array.isArray(responseData)) {
+            prestamosData = responseData;
+          } else {
             prestamosData = [];
           }
         } catch (err) {
@@ -268,13 +273,6 @@ const MaterialRequests = () => {
         }
       }
       
-      interface Prestamo {
-        estado: string;
-        material_id: number;
-        fecha_devolucion_esperada: string;
-        fecha_devolucion_real: string | null;
-      }
-
       const prestamosActivos = prestamosData.filter((p: Prestamo) => 
         p.estado === 'activo' || p.estado === 'Activo'
       );
@@ -282,7 +280,7 @@ const MaterialRequests = () => {
       const materialesDetalle = await Promise.all(
         prestamosActivos.map(async (prestamo: Prestamo) => {
           try {
-            const materialResponse = await api.get(`/materiales/${prestamo.material_id}`);
+            const materialResponse = await api.get<MaterialData>(`/materiales/${prestamo.material_id}`);
             const fechaDevolucion = new Date(prestamo.fecha_devolucion_esperada);
             const fechaActual = new Date();
             const isOverdue = fechaActual > fechaDevolucion && !prestamo.fecha_devolucion_real;
@@ -308,7 +306,7 @@ const MaterialRequests = () => {
 
       setClienteDetalle({
         nombre: userDetails.nombre,
-        carne: userDetails.carne,
+        carne: userDetails.carne_identidad,
         direccion: userDetails.direccion,
         prestamos_activos: prestamosActivos.length,
         materiales_prestados: materialesDetalle,
@@ -327,6 +325,29 @@ const MaterialRequests = () => {
     } finally {
       setLoadingCliente(false);
     }
+  };
+
+  useEffect(() => {
+    fetchSolicitudes();
+    fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStatus]);
+
+  const getStatusBadge = (estado: string) => {
+    const statusMap = {
+      'pendiente': { class: 'bg-warning', icon: 'bi-clock' },
+      'aprobada': { class: 'bg-success', icon: 'bi-check-circle' },
+      'rechazada': { class: 'bg-danger', icon: 'bi-x-circle' },
+      'cancelada': { class: 'bg-secondary', icon: 'bi-ban' }
+    };
+    const statusInfo = statusMap[estado as keyof typeof statusMap] || { class: 'bg-info', icon: 'bi-info-circle' };
+    
+    return (
+      <span className={`badge ${statusInfo.class}`}>
+        <i className={`bi ${statusInfo.icon} me-1`}></i>
+        {estado.toUpperCase()}
+      </span>
+    );
   };
 
   const openClientModal = (solicitud: Solicitud) => {
@@ -373,19 +394,16 @@ const MaterialRequests = () => {
     
     setProcessingId(selectedSolicitudId);
     try {
-      // Find the current solicitud to get user and material info
       const currentSolicitud = solicitudes.find(s => s.id === selectedSolicitudId);
       if (!currentSolicitud) {
         throw new Error('Solicitud no encontrada');
       }
 
-      // Update the request status
       await api.put(`/solicitudes/${selectedSolicitudId}`, {
         estado: selectedAction === 'aprobar' ? 'aprobada' : 'rechazada',
         observaciones: observaciones || undefined
       });
 
-      // If approving, create a loan
       if (selectedAction === 'aprobar') {
         try {
           await api.post('/prestamos', {
@@ -395,14 +413,12 @@ const MaterialRequests = () => {
           console.log('Préstamo creado exitosamente');
         } catch (loanError) {
           console.error('Error creating loan:', loanError);
-          // Even if loan creation fails, we continue since the request was approved
-          // You might want to show a warning to the user
           setError('Solicitud aprobada pero hubo un error al crear el préstamo. Verifique manualmente.');
         }
       }
       
-      // Refresh the list
       fetchSolicitudes();
+      fetchStats();
       closeObservacionesModal();
     } catch (err) {
       console.error(`Error ${selectedAction === 'aprobar' ? 'aprobando' : 'rechazando'} solicitud:`, err);
@@ -412,415 +428,424 @@ const MaterialRequests = () => {
     }
   };
 
-  const handleRefresh = async () => {
-    setFilterEstado('');
-    setError('');
-    setCurrentPage(1);
-    setLoading(true);
-    try {
-      const response = await api.get(`/solicitudes?page=1&size=${pageSize}`);
-      
-      // Handle the paginated response structure
-      const responseData = response.data;
-      let solicitudesData = [];
-      let paginationData = null;
-      
-      // Check if response has pagination structure
-      if (responseData && typeof responseData === 'object') {
-        if (Array.isArray(responseData.data) && responseData.pagination) {
-          solicitudesData = responseData.data;
-          paginationData = responseData.pagination;
-        } else if (Array.isArray(responseData.solicitudes) && responseData.pagination) {
-          solicitudesData = responseData.solicitudes;
-          paginationData = responseData.pagination;
-        } else if (Array.isArray(responseData)) {
-          // Fallback for non-paginated response
-          solicitudesData = responseData;
-        } else {
-          console.error('Unexpected response structure:', responseData);
-          setError('Error: Estructura de respuesta inesperada del servidor.');
-          setSolicitudes([]);
-          return;
-        }
-      }
-      
-      // Update pagination state
-      if (paginationData) {
-        setPagination(paginationData);
-        setCurrentPage(paginationData.page);
-      } else {
-        // Fallback pagination for non-paginated responses
-        setPagination({
-          total: solicitudesData.length,
-          page: 1,
-          size: solicitudesData.length,
-          pages: 1
-        });
-        setCurrentPage(1);
-      }
-
-      // Ensure we have an array
-      if (!Array.isArray(solicitudesData)) {
-        console.error('Response is not an array:', solicitudesData);
-        setError('Error: Los datos recibidos no tienen el formato esperado.');
-        setSolicitudes([]);
-        return;
-      }
-
-      // Extract unique user IDs
-      const userIds = [...new Set(solicitudesData.map((s: Solicitud) => s.usuario_id))];
-      
-      // Fetch user details for all unique user IDs
-      const usersPromises = userIds.map((userId: number) => 
-        api.get(`/usuarios/${userId}`).catch(() => ({ data: null }))
-      );
-      
-      const usersResponses = await Promise.all(usersPromises);
-      interface UserData {
-        nombre: string;
-        carne_identidad: string;
-        direccion: string;
-      }
-      const usersData: Record<number, UserData> = {};
-      
-      usersResponses.forEach((response, index) => {
-        if (response.data) {
-          usersData[userIds[index]] = response.data;
-        }
-      });
-      
-      setClientesData(usersData);
-      
-      // Fetch material details
-      const materialesIds = solicitudesData.map((s: Solicitud) => s.material_id);
-      
-      if (materialesIds.length > 0) {
-        try {
-          const materialesPromises = materialesIds.map((id: number) => 
-            api.get(`/materiales/${id}`).catch(() => ({ data: null }))
-          );
-          
-          const materialesResponses = await Promise.all(materialesPromises);
-          
-          const solicitudesConTitulos = solicitudesData.map((solicitud: Solicitud, index: number) => {
-            const materialData = materialesResponses[index].data;
-            const userData = usersData[solicitud.usuario_id];
-            return {
-              ...solicitud,
-              titulo_material: materialData ? materialData.titulo : `Material #${solicitud.material_id}`,
-              nombre_usuario: userData?.nombre || `Usuario #${solicitud.usuario_id}`,
-              carne_identidad: userData?.carne_identidad || '',
-              direccion_usuario: userData?.direccion || ''
-            };
-          });
-          
-          setSolicitudes(solicitudesConTitulos);
-        } catch (err) {
-          console.error('Error fetching material details:', err);
-          setSolicitudes(solicitudesData);
-        }
-      } else {
-        setSolicitudes(solicitudesData);
-      }
-    } catch (err) {
-      console.error('Error fetching solicitudes:', err);
-      setError('Error al cargar las solicitudes.');
-      setSolicitudes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.pages && newPage !== currentPage && !loadingPage) {
-      setCurrentPage(newPage);
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
+      fetchSolicitudes(newPage);
     }
   };
 
-  const handlePageSizeChange = (newSize: number) => {
-    if (newSize !== pageSize && !loadingPage) {
-      setPageSize(newSize);
-      setCurrentPage(1);
-    }
+  const handleStatusChange = (status: 'all' | 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada') => {
+    setActiveStatus(status);
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  if (loading && solicitudes.length === 0) {
-    return (
-      <div className="container mt-5 text-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Cargando...</span>
-        </div>
-        <p className="mt-2">Cargando solicitudes...</p>
-      </div>
-    );
-  }
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    const currentPage = pagination.page;
+    const totalPages = pagination.pages;
+    
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (endPage - startPage < 4) {
+      if (startPage === 1) {
+        endPage = Math.min(totalPages, startPage + 4);
+      } else if (endPage === totalPages) {
+        startPage = Math.max(1, endPage - 4);
+      }
+    }
+
+    if (startPage > 1) {
+      buttons.push(
+        <button key={1} className="page-link" onClick={() => handlePageChange(1)}>1</button>
+      );
+      if (startPage > 2) {
+        buttons.push(<span key="dots1" className="page-link">...</span>);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button 
+          key={i} 
+          className={`page-link ${i === currentPage ? 'active' : ''}`}
+          onClick={() => handlePageChange(i)}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        buttons.push(<span key="dots2" className="page-link">...</span>);
+      }
+      buttons.push(
+        <button key={totalPages} className="page-link" onClick={() => handlePageChange(totalPages)}>
+          {totalPages}
+        </button>
+      );
+    }
+
+    return buttons;
+  };
 
   return (
-    <div className="container mt-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-          <i className="bi bi-file-earmark-text me-2"></i>
-          Gestión de Solicitudes de Materiales
-        </h2>
-        <button 
-          className="btn btn-outline-secondary"
-          onClick={() => navigate('/admin-dashboard')}
-        >
-          <i className="bi bi-arrow-left me-2"></i>
-          Volver al Dashboard
-        </button>
-      </div>
-      
-      {error && (
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {error}
-        </div>
-      )}
-      
-      <div className="card mb-4">
-        <div className="card-header bg-light">
-          <div className="row align-items-center">
-            <div className="col">
-              <h5 className="mb-0">Filtros</h5>
-            </div>
-            <div className="col-md-3">
-              <select 
-                className="form-select form-select-sm"
-                value={filterEstado}
-                onChange={(e) => setFilterEstado(e.target.value)}
-              >
-                <option value="">Todos los estados</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="aprobada">Aprobadas</option>
-                <option value="rechazada">Rechazadas</option>
-                <option value="cancelada">Canceladas</option>
-              </select>
-            </div>
-            <div className="col-md-2">
-              <select 
-                className="form-select form-select-sm"
-                value={pageSize}
-                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              >
-                <option value={5}>5 por página</option>
-                <option value={10}>10 por página</option>
-                <option value={25}>25 por página</option>
-                <option value={50}>50 por página</option>
-              </select>
-            </div>
-            <div className="col-auto">
+    <div className="min-vh-100" style={{background: 'linear-gradient(135deg,rgb(255, 255, 255) 100%,rgb(255, 255, 255) 100%)'}}>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-bottom">
+        <div className="container py-2">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
               <button 
-                className="btn btn-sm btn-outline-primary"
-                onClick={handleRefresh}
-                disabled={loading}
+                className="btn btn-outline-secondary btn-sm me-2" 
+                onClick={() => navigate('/admin-dashboard')}
+                title="Volver"
               >
-                {loading ? (
-                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                ) : (
-                  <i className="bi bi-arrow-clockwise me-1"></i>
-                )}
-                Refrescar
+                <i className="bi bi-arrow-left"></i>
               </button>
+              <div>
+                <h5 className="mb-0">Gestión de Solicitudes</h5>
+                <small className="text-muted">Administra las solicitudes de materiales</small>
+              </div>
+            </div>
+            
+            {stats && (
+              <div className="d-flex gap-3">
+                <div className="text-center">
+                  <div className="fw-bold text-primary small">{stats.total_solicitudes}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Total</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-warning small">{stats.solicitudes_pendientes}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Pendientes</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-success small">{stats.solicitudes_aprobadas}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Aprobadas</small>
+                </div>
+                <div className="text-center">
+                  <div className="fw-bold text-danger small">{stats.solicitudes_rechazadas}</div>
+                  <small className="text-muted" style={{fontSize: '0.75rem'}}>Rechazadas</small>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border-bottom">
+        <div className="container py-2">
+          <div className="row g-2 align-items-center">
+            <div className="col-md-8">
+              <div className="btn-group btn-group-sm" role="group">
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="statusFilter" 
+                  id="all" 
+                  checked={activeStatus === 'all'}
+                  onChange={() => handleStatusChange('all')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="all">
+                  <i className="bi bi-collection me-1"></i>Todas
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="statusFilter" 
+                  id="pendiente" 
+                  checked={activeStatus === 'pendiente'}
+                  onChange={() => handleStatusChange('pendiente')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="pendiente">
+                  <i className="bi bi-clock me-1"></i>Pendientes
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="statusFilter" 
+                  id="aprobada" 
+                  checked={activeStatus === 'aprobada'}
+                  onChange={() => handleStatusChange('aprobada')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="aprobada">
+                  <i className="bi bi-check-circle me-1"></i>Aprobadas
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="statusFilter" 
+                  id="rechazada" 
+                  checked={activeStatus === 'rechazada'}
+                  onChange={() => handleStatusChange('rechazada')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="rechazada">
+                  <i className="bi bi-x-circle me-1"></i>Rechazadas
+                </label>
+
+                <input 
+                  type="radio" 
+                  className="btn-check" 
+                  name="statusFilter" 
+                  id="cancelada" 
+                  checked={activeStatus === 'cancelada'}
+                  onChange={() => handleStatusChange('cancelada')}
+                />
+                <label className="btn btn-outline-primary" htmlFor="cancelada">
+                  <i className="bi bi-ban me-1"></i>Canceladas
+                </label>
+              </div>
+            </div>
+            
+            <div className="col-md-2 text-end">
+              <small className="text-muted" style={{fontSize: '0.8rem'}}>
+                {pagination.total} solicitud{pagination.total !== 1 ? 'es' : ''}
+              </small>
             </div>
           </div>
         </div>
       </div>
-      
-      {solicitudes.length === 0 && !loading && !loadingPage ? (
-        <div className="alert alert-info">
-          <i className="bi bi-info-circle me-2"></i>
-          No hay solicitudes{filterEstado ? ` en estado "${filterEstado}"` : ''}.
-        </div>
-      ) : (
-        <>
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <span className="text-muted">
-              {loadingPage ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Cargando página...
-                </>
-              ) : (
-                <>
-                  Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.total)} de {pagination.total} solicitudes
-                </>
-              )}
-            </span>
+
+      {/* Content */}
+      <div className="container py-3">
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {error}
           </div>
-          
-          <div className="table-responsive">
-            <table className="table table-striped table-hover">
-              <thead className="table-light">
-                <tr>
-                  <th>Número</th>
-                  <th>Cliente</th>
-                  <th>Material</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                  <th>Observaciones</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingPage ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-4">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Cargando...</span>
-                      </div>
-                      <p className="mt-2 mb-0 text-muted">Cargando solicitudes...</p>
-                    </td>
-                  </tr>
-                ) : (
-                  solicitudes.map((solicitud) => (
-                    <tr key={solicitud.id}>
-                      <td>{solicitud.id}</td>
-                      <td>
-                        <button 
-                          className="btn btn-link p-0 text-start text-decoration-none"
-                          onClick={() => openClientModal(solicitud)}
-                          title="Ver detalles del cliente"
-                        >
-                          <i className="bi bi-person-circle me-1"></i>
-                          {solicitud.carne_identidad || `Usuario #${solicitud.usuario_id}`}
-                        </button>
-                      </td>
-                      <td>{solicitud.titulo_material || `Material #${solicitud.material_id}`}</td>
-                      <td>
-                        <span className={`badge ${
-                          solicitud.estado === 'pendiente' ? 'bg-warning' : 
-                          solicitud.estado === 'aprobada' ? 'bg-success' : 
-                          solicitud.estado === 'rechazada' ? 'bg-danger' :
-                          solicitud.estado === 'cancelada' ? 'bg-secondary' : 'bg-info'
-                        }`}>
-                          {solicitud.estado.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</td>
-                      <td>
-                        {solicitud.observaciones ? (
+        )}
+
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary mb-3" role="status">
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+            <p className="text-muted">Cargando solicitudes...</p>
+          </div>
+        ) : solicitudes.length === 0 ? (
+          <div className="text-center py-5">
+            <i className="bi bi-inbox display-1 text-muted mb-3"></i>
+            <h5>No se encontraron solicitudes</h5>
+            <p className="text-muted">No hay solicitudes{activeStatus !== 'all' ? ` en estado "${activeStatus}"` : ''}</p>
+          </div>
+        ) : (
+          <>
+            {/* Request Cards for Mobile */}
+            <div className="d-md-none">
+              {solicitudes.map((solicitud) => (
+                <div key={solicitud.id} className="card mb-3 shadow-sm">
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="card-title mb-0">#{solicitud.id}</h6>
+                      {getStatusBadge(solicitud.estado)}
+                    </div>
+                    
+                    <div className="mb-2">
+                      <button 
+                        className="btn btn-link p-0 text-start text-decoration-none fw-medium"
+                        onClick={() => openClientModal(solicitud)}
+                      >
+                        <i className="bi bi-person-circle me-1"></i>
+                        {solicitud.carne_identidad || solicitud.nombre_usuario}
+                      </button>
+                    </div>
+                    
+                    <p className="card-text text-muted small mb-2">
+                      <i className="bi bi-book me-1"></i>
+                      {solicitud.titulo_material}
+                    </p>
+                    
+                    <div className="d-flex justify-content-between align-items-center">
+                      <small className="text-muted">
+                        <i className="bi bi-calendar me-1"></i>
+                        {new Date(solicitud.fecha_solicitud).toLocaleDateString()}
+                      </small>
+                      
+                      <div className="d-flex gap-1">
+                        {solicitud.observaciones && (
                           <button 
-                            className="btn btn-link p-0 text-start text-decoration-none"
+                            className="btn btn-sm btn-outline-secondary"
                             onClick={() => openObservacionModal(solicitud.observaciones!)}
-                            title="Ver observaciones completas"
+                            title="Ver observaciones"
                           >
-                            <i className="bi bi-chat-text me-1"></i>
-                            {solicitud.observaciones.length > 30 
-                              ? `${solicitud.observaciones.substring(0, 30)}...` 
-                              : solicitud.observaciones
-                            }
+                            <i className="bi bi-chat-text"></i>
                           </button>
-                        ) : (
-                          <span className="text-muted">-</span>
                         )}
-                      </td>
-                      <td>
+                        
                         {solicitud.estado === 'pendiente' && (
-                          <div className="btn-group btn-group-sm">
+                          <>
                             <button 
-                              className="btn btn-success"
+                              className="btn btn-sm btn-success"
                               onClick={() => openObservacionesModal(solicitud.id, 'aprobar')}
                               disabled={processingId === solicitud.id}
                             >
-                              {processingId === solicitud.id ? (
-                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                              ) : (
-                                <i className=""></i>
-                              )}
-                              {' '}Aprobar
+                              <i className="bi bi-check"></i>
                             </button>
                             <button 
-                              className="btn btn-danger"
+                              className="btn btn-sm btn-danger"
                               onClick={() => openObservacionesModal(solicitud.id, 'rechazar')}
                               disabled={processingId === solicitud.id}
                             >
-                              {processingId === solicitud.id ? (
-                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                              ) : (
-                                <i className=""></i>
-                              )}
-                              {' '}Rechazar
+                              <i className="bi bi-x"></i>
                             </button>
-                          </div>
+                          </>
                         )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Pagination Controls */}
-          {pagination.pages > 1 && (
-            <div className="d-flex justify-content-center mt-4">
-              <nav aria-label="Paginación de solicitudes">
-                <ul className="pagination">
-                  <li className={`page-item ${currentPage === 1 || loadingPage ? 'disabled' : ''}`}>
-                    <button 
-                      className="page-link" 
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1 || loadingPage}
-                    >
-                      <i className="bi bi-chevron-left"></i>
-                      Anterior
-                    </button>
-                  </li>
-                  
-                  {[...Array(pagination.pages)].map((_, index) => {
-                    const page = index + 1;
-                    // Show first page, last page, current page, and pages around current page
-                    if (
-                      page === 1 || 
-                      page === pagination.pages || 
-                      (page >= currentPage - 2 && page <= currentPage + 2)
-                    ) {
-                      return (
-                        <li key={page} className={`page-item ${currentPage === page ? 'active' : ''} ${loadingPage ? 'disabled' : ''}`}>
-                          <button 
-                            className="page-link" 
-                            onClick={() => handlePageChange(page)}
-                            disabled={loadingPage}
-                          >
-                            {loadingPage && currentPage === page ? (
-                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            ) : (
-                              page
-                            )}
-                          </button>
-                        </li>
-                      );
-                    } else if (
-                      page === currentPage - 3 || 
-                      page === currentPage + 3
-                    ) {
-                      return (
-                        <li key={page} className="page-item disabled">
-                          <span className="page-link">...</span>
-                        </li>
-                      );
-                    }
-                    return null;
-                  })}
-                  
-                  <li className={`page-item ${currentPage === pagination.pages || loadingPage ? 'disabled' : ''}`}>
-                    <button 
-                      className="page-link" 
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === pagination.pages || loadingPage}
-                    >
-                      Siguiente
-                      <i className="bi bi-chevron-right"></i>
-                    </button>
-                  </li>
-                </ul>
-              </nav>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </>
-      )}
-      
+
+            {/* Request Table for Desktop */}
+            <div className="d-none d-md-block">
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th style={{width: '8%'}}>Nro</th>
+                      <th style={{width: '20%'}}>Cliente</th>
+                      <th style={{width: '30%'}}>Material</th>
+                      <th style={{width: '12%'}}>Estado</th>
+                      <th style={{width: '12%'}}>Fecha</th>
+                      <th style={{width: '13%'}}>Observaciones</th>
+                      <th style={{width: '130px'}}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {solicitudes.map((solicitud) => (
+                      <tr key={solicitud.id}>
+                        <td>
+                          <span className="fw-medium">#{solicitud.id}</span>
+                        </td>
+                        <td>
+                          <button 
+                            className="btn btn-link p-0 text-start text-decoration-none"
+                            onClick={() => openClientModal(solicitud)}
+                            title="Ver detalles del cliente"
+                          >
+                            <div className="text-truncate" style={{maxWidth: '150px'}}>
+                              {solicitud.carne_identidad || solicitud.nombre_usuario}
+                            </div>
+                          </button>
+                        </td>
+                        <td>
+                          <div className="text-truncate" style={{maxWidth: '250px'}} title={solicitud.titulo_material}>
+                            <i className="bi bi-book me-1 text-muted"></i>
+                            {solicitud.titulo_material}
+                          </div>
+                        </td>
+                        <td>{getStatusBadge(solicitud.estado)}</td>
+                        <td>
+                          <small className="text-muted">
+                            {new Date(solicitud.fecha_solicitud).toLocaleDateString()}
+                          </small>
+                        </td>
+                        <td>
+                          {solicitud.observaciones ? (
+                            <button 
+                              className="btn btn-link p-0 text-start text-decoration-none"
+                              onClick={() => openObservacionModal(solicitud.observaciones!)}
+                              title="Ver observaciones completas"
+                            >
+                              <i className="bi bi-chat-text me-1"></i>
+                              <span className="text-truncate d-inline-block" style={{maxWidth: '100px'}}>
+                                {solicitud.observaciones.length > 20 
+                                  ? `${solicitud.observaciones.substring(0, 20)}...` 
+                                  : solicitud.observaciones
+                                }
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          {solicitud.estado === 'pendiente' ? (
+                            <div className="btn-group btn-group-sm">
+                              <button 
+                                className="btn btn-success"
+                                onClick={() => openObservacionesModal(solicitud.id, 'aprobar')}
+                                disabled={processingId === solicitud.id}
+                                title="Aprobar solicitud"
+                              >
+                                {processingId === solicitud.id ? (
+                                  <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                  <i className="bi bi-check"></i>
+                                )}
+                              </button>
+                              <button 
+                                className="btn btn-danger"
+                                onClick={() => openObservacionesModal(solicitud.id, 'rechazar')}
+                                disabled={processingId === solicitud.id}
+                                title="Rechazar solicitud"
+                              >
+                                {processingId === solicitud.id ? (
+                                  <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                  <i className="bi bi-x"></i>
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-muted small">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-muted">
+                  Página {pagination.page} de {pagination.pages}
+                </small>
+                <nav>
+                  <ul className="pagination pagination-sm mb-0">
+                    <li className={`page-item ${pagination.page === 1 ? 'disabled' : ''}`}>
+                      <button 
+                        className="page-link" 
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={pagination.page === 1}
+                      >
+                        <i className="bi bi-chevron-left"></i>
+                      </button>
+                    </li>
+                    
+                    {renderPaginationButtons().map((button, index) => (
+                      <li key={index} className={`page-item ${button.props?.className?.includes('active') ? 'active' : ''}`}>
+                        {button}
+                      </li>
+                    ))}
+                    
+                    <li className={`page-item ${pagination.page === pagination.pages ? 'disabled' : ''}`}>
+                      <button 
+                        className="page-link" 
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={pagination.page === pagination.pages}
+                      >
+                        <i className="bi bi-chevron-right"></i>
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Modal para ver observaciones */}
       {showObservacionModal && (
         <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -983,7 +1008,7 @@ const MaterialRequests = () => {
                     rows={4}
                     value={observaciones}
                     onChange={(e) => setObservaciones(e.target.value)}
-                    placeholder={`Añada comentarios sobre la ${selectedAction === 'aprobar' ? 'aprobatión' : 'razón del rechazo'}...`}
+                    placeholder={`Añada comentarios sobre la ${selectedAction === 'aprobar' ? 'aprobación' : 'razón del rechazo'}...`}
                   />
                 </div>
               </div>
