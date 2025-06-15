@@ -1,0 +1,5 @@
+winget install --id Cloudflare.cloudflared
+choco install ngrok
+
+cloudflared tunnel --url http://localhost:8000          # backend
+ngrok http http://localhost:5173                        # frontend
