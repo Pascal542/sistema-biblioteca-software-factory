@@ -421,9 +421,10 @@ async def obtener_prestamos_cliente(
     """
     Obtiene todos los préstamos realizados por un usuario específico,
     incluyendo detalles del material. Endpoint compatible con ClientLoans frontend.
+    Ordenados del más reciente al más antiguo.
     """
-    # Obtener todos los préstamos del usuario
-    prestamos = db.query(Prestamo).filter(Prestamo.usuario_id == usuario_id).all()
+    # Obtener todos los préstamos del usuario ordenados por fecha de préstamo descendente
+    prestamos = db.query(Prestamo).filter(Prestamo.usuario_id == usuario_id).order_by(Prestamo.fecha_prestamo.desc()).all()
     
     # Obtener detalles de cada préstamo
     resultado = []
@@ -448,10 +449,11 @@ async def obtener_prestamos_cliente(
 async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
     """
     Obtiene todos los materiales que están actualmente en préstamo
-    con información detallada del material y tiempo de préstamo.
+    con información detallada del material y tiempo de préstamo,
+    ordenados del más reciente al más antiguo.
     """
-    # Obtener todos los préstamos activos
-    prestamos_activos = db.query(Prestamo).filter(Prestamo.estado == "Activo").all()
+    # Obtener todos los préstamos activos ordenados por fecha de préstamo descendente
+    prestamos_activos = db.query(Prestamo).filter(Prestamo.estado == "Activo").order_by(Prestamo.fecha_prestamo.desc()).all()
     
     # Dictionary to group by material_id and count loans
     materiales_agrupados = {}
@@ -479,8 +481,8 @@ async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
             
             factor_estancia = total_dias / len(data['prestamos']) if data['prestamos'] else 0
             
-            # Get the most recent loan date
-            fecha_prestamo_reciente = max(p.fecha_prestamo for p in data['prestamos'])
+            # Get the most recent loan date (first one since they're ordered by desc)
+            fecha_prestamo_reciente = data['prestamos'][0].fecha_prestamo
             
             resultado.append(
                 MaterialEnPrestamo(
@@ -492,5 +494,8 @@ async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
                     factor_estancia=factor_estancia
                 )
             )
+    
+    # Sort the final result by fecha_prestamo in descending order to ensure consistency
+    resultado.sort(key=lambda x: x.fecha_prestamo, reverse=True)
     
     return resultado

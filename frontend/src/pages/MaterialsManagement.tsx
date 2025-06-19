@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/axiosInstance';
 import MaterialDetailModal from '../components/MaterialDetailModal';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 import '../styles/MaterialsManagement.css';
 
 interface Material {
@@ -355,7 +353,7 @@ const MaterialsManagement = () => {
               </button>
               <div>
                 <h5 className="mb-0">Catálogo de Materiales</h5>
-                <small className="text-muted">Explora nuestra colección digital</small>
+                <small className="text-muted">Colección digital</small>
               </div>
             </div>
             
@@ -538,7 +536,7 @@ const MaterialsManagement = () => {
                       <th style={{width: '15%'}}>Ubicación</th>
                       <th style={{width: '10%'}}>Estado</th>
                       <th style={{width: '8%'}}>Disponibles</th>
-                      <th style={{width: '80px'}}>Acciones</th>
+                      <th style={{width: '80px'}}>Detalles</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -37,6 +37,7 @@ const CreateMaterialRequest = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [userData, setUserData] = useState<User | null>(null);
+    const [iconsReady, setIconsReady] = useState(false);
     
     // Estados para búsqueda y paginación
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,8 +48,15 @@ const CreateMaterialRequest = () => {
     const [isSearchMode, setIsSearchMode] = useState(false);
 
     useEffect(() => {
+        // Asegurar que los iconos estén cargados
+        const timer = setTimeout(() => {
+            setIconsReady(true);
+        }, 100);
+
         fetchUserData();
         loadInitialMaterials();
+
+        return () => clearTimeout(timer);
     }, []);
 
     // Búsqueda con debounce
@@ -175,11 +183,6 @@ const CreateMaterialRequest = () => {
         setError('');
     };
 
-    const clearSelection = () => {
-        setSelectedMaterial(null);
-    };
-
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -254,6 +257,18 @@ const CreateMaterialRequest = () => {
         }
     };
 
+    if (!iconsReady) {
+        return (
+            <div className="min-vh-100 d-flex align-items-center justify-content-center">
+                <div className="text-center">
+                    <div className="spinner-border text-primary mb-3" role="status">
+                        <span className="visually-hidden">Cargando...</span>
+                    </div>
+                    <p className="text-muted">Preparando interfaz...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-vh-100" style={{background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'}}>
@@ -334,16 +349,7 @@ const CreateMaterialRequest = () => {
                                             <i className="bi bi-collection me-1"></i>
                                             {isSearchMode ? 'Resultados de búsqueda' : 'Materiales disponibles'}
                                         </h6>
-                                        {selectedMaterial && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-secondary btn-sm"
-                                                onClick={clearSelection}
-                                            >
-                                                <i className="bi bi-x me-1"></i>
-                                                Limpiar selección
-                                            </button>
-                                        )}
+
                                     </div>
 
                                     {/* Lista de materiales - Cards para móvil */}

@@ -24,9 +24,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Solo limpiar token, no redireccionar automáticamente
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('user');
+      // Permitir que el AuthContext maneje la redirección
     }
     return Promise.reject(error);
   }

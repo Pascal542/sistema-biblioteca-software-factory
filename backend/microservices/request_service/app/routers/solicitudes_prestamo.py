@@ -206,13 +206,14 @@ def obtener_solicitudes(
     db: Session = Depends(get_db)
 ):
     """
-    Obtiene una lista paginada de solicitudes con filtro opcional por estado.
+    Obtiene una lista paginada de solicitudes con filtro opcional por estado,
+    ordenadas de la más reciente a la más antigua.
     """
     # Calcular offset
     skip = (page - 1) * size
     
-    # Query base
-    query = db.query(SolicitudPrestamo).filter(SolicitudPrestamo.activo == True)
+    # Query base con orden descendente por fecha de solicitud
+    query = db.query(SolicitudPrestamo).filter(SolicitudPrestamo.activo == True).order_by(SolicitudPrestamo.fecha_solicitud.desc())
     
     # Aplicar filtro por estado si se proporciona
     if estado:
@@ -275,11 +276,11 @@ async def obtener_solicitudes_por_dni(
 
     skip = (page - 1) * size
 
-    # Query base
+    # Query base con orden descendente por fecha de solicitud
     query = db.query(SolicitudPrestamo).filter(
         SolicitudPrestamo.usuario_id == usuario_data["id"],
         SolicitudPrestamo.activo == True
-    )
+    ).order_by(SolicitudPrestamo.fecha_solicitud.desc())
 
     total = query.count()
     solicitudes = query.offset(skip).limit(size).all()

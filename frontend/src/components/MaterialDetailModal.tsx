@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/axiosInstance';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 
 interface Material {
   id: number;
@@ -141,7 +139,7 @@ const MaterialDetailModal: React.FC<MaterialDetailModalProps> = ({
             </h5>
             <button 
               type="button" 
-              className="btn btn-outline-secondary btn-sm rounded-circle" 
+              className="btn btn-outline-secondary btn-sm rounded-circle ms-auto" 
               onClick={onClose}
               title="Cerrar"
             >

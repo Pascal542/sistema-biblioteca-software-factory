@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/axiosInstance';
 import { generateUsername, generatePassword } from '../utils/auth';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 
 interface User {
   id: number;
