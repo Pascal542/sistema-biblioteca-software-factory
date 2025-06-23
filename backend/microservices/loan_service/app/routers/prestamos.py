@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.prestamo import Prestamo
 from app.schemas.prestamo import PrestamoCreate, PrestamoResponse, PrestamoUpdate
-BACKEND_URL = "http://192.168.1.200"
-# BACKEND_URL = "http://localhost"
+#BACKEND_URL = "http://192.168.1.200"
+BACKEND_URL = "http://localhost"
 
 router = APIRouter()
 
