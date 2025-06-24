@@ -119,7 +119,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Footer */}
-      <footer className="mt-5 py-4 bg-dark">
+      <footer className="mt-5 py-4 bg-dark position-absolute w-100" style={{bottom: 0}}>
         <div className="container">
           <div className="row align-items-center">
             <div className="col-md-6">

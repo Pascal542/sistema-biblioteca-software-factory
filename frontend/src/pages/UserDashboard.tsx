@@ -206,7 +206,7 @@ const UserDashboard = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-2 mt-4 bg-dark text-white">
+      <footer className="py-2 mt-4 bg-dark text-white mb-0 position-absolute w-100" style={{bottom: 0}}>
         <div className="container">
           <div className="row align-items-center">
             { /* Left Column */}
