@@ -9,6 +9,7 @@ interface MaterialEnPrestamo {
   cantidad_prestada: number;
   fecha_prestamo: string;
   factor_estancia: number;
+  prestamo_id?: number;
 }
 
 const LoanedMaterials = () => {
@@ -16,6 +17,10 @@ const LoanedMaterials = () => {
   const [materials, setMaterials] = useState<MaterialEnPrestamo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
+  const [selectedMaterialTitle, setSelectedMaterialTitle] = useState<string>('');
 
   useEffect(() => {
     fetchMaterials();
@@ -25,7 +30,6 @@ const LoanedMaterials = () => {
     setLoading(true);
     setError('');
     try {
-      // Update URL to use relative path like AvailableMaterials
       const response = await axios.get('/api/prestamos/materiales/en-prestamo');
       setMaterials(response.data);
     } catch (err) {
@@ -34,6 +38,39 @@ const LoanedMaterials = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelLoan = async (prestamoId: number) => {
+    const material = materials.find(m => m.prestamo_id === prestamoId);
+    setSelectedLoanId(prestamoId);
+    setSelectedMaterialTitle(material?.titulo || 'Material');
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelLoan = async () => {
+    if (!selectedLoanId) return;
+    
+    setCancellingId(selectedLoanId);
+    setShowCancelModal(false);
+    
+    try {
+      await axios.put(`/api/prestamos/${selectedLoanId}/cancelar`);
+      
+      await fetchMaterials();
+    } catch (err) {
+      console.error('Error cancelling loan:', err);
+      setError('Error al cancelar el préstamo.');
+    } finally {
+      setCancellingId(null);
+      setSelectedLoanId(null);
+      setSelectedMaterialTitle('');
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setSelectedLoanId(null);
+    setSelectedMaterialTitle('');
   };
 
   if (loading) {
@@ -132,6 +169,22 @@ const LoanedMaterials = () => {
                         <i className="bi bi-calendar me-1"></i>
                         {new Date(material.fecha_prestamo).toLocaleDateString()}
                       </small>
+                      {material.prestamo_id && (
+                        <button 
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleCancelLoan(material.prestamo_id!)}
+                          disabled={cancellingId === material.prestamo_id}
+                          title="Cancelar préstamo"
+                        >
+                          {cancellingId === material.prestamo_id ? (
+                            <div className="spinner-border spinner-border-sm" role="status">
+                              <span className="visually-hidden">Cancelando...</span>
+                            </div>
+                          ) : (
+                            <i className="bi bi-x-circle"></i>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -151,7 +204,8 @@ const LoanedMaterials = () => {
                           <th style={{width: '20%'}}>Autor</th>
                           <th style={{width: '10%'}}>Cantidad</th>
                           <th style={{width: '15%'}}>Fecha Préstamo</th>
-                          <th style={{width: '15%'}}>Factor Estancia</th>
+                          <th style={{width: '10%'}}>Factor Estancia</th>
+                          <th style={{width: '5%'}}>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -181,6 +235,25 @@ const LoanedMaterials = () => {
                             <td>
                               <span className="badge bg-info">{material.factor_estancia.toFixed(2)}</span>
                             </td>
+                            <td>
+                              {material.prestamo_id && (
+                                <button 
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => handleCancelLoan(material.prestamo_id!)}
+                                  disabled={cancellingId === material.prestamo_id}
+                                  title="Cancelar préstamo"
+                                >
+                                  {cancellingId === material.prestamo_id ? (
+                                    <div className="spinner-border spinner-border-sm" role="status">
+                                      <span className="visually-hidden">Cancelando...</span>
+                                    </div>
+                                  ) : (
+                                    <i className=""></i>
+                                  )}
+                                  Devuelto
+                                </button>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -192,6 +265,60 @@ const LoanedMaterials = () => {
           </>
         )}
       </div>
+
+      {/* Modal de confirmación de cancelación */}
+      <div className={`modal fade ${showCancelModal ? 'show' : ''}`} 
+           style={{display: showCancelModal ? 'block' : 'none'}} 
+           tabIndex={-1} 
+           role="dialog">
+        <div className="modal-dialog modal-dialog-centered" role="document">
+          <div className="modal-content">
+            <div className="modal-header border-0">
+              <h5 className="modal-title">
+                <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+                Confirmar Devolución
+              </h5>
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={closeCancelModal}
+                aria-label="Close"
+              ></button>
+            </div>
+            <div className="modal-body">
+              <p className="mb-3">
+                ¿Está seguro que desea devolver el siguiente material?
+              </p>
+              <div className="bg-light p-3 rounded">
+                <h6 className="mb-0">{selectedMaterialTitle}</h6>
+                <small className="text-muted">El material será devuelto al inventario</small>
+              </div>
+            </div>
+            <div className="modal-footer border-0">
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={closeCancelModal}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-danger"
+                onClick={confirmCancelLoan}
+              >
+                <i className="bi bi-check-circle me-1"></i>
+                Confirmar Devolución
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal backdrop */}
+      {showCancelModal && (
+        <div className="modal-backdrop fade show" onClick={closeCancelModal}></div>
+      )}
     </div>
   );
 };

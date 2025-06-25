@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.prestamo import Prestamo
 from app.schemas.prestamo import PrestamoCreate, PrestamoResponse, PrestamoUpdate
-#BACKEND_URL = "http://192.168.1.200"
-BACKEND_URL = "http://localhost"
+BACKEND_IP = os.getenv("BIP", "localhost")
+BACKEND_URL = f"http://{BACKEND_IP}"
 
 router = APIRouter()
 
@@ -64,6 +64,7 @@ class MaterialEnPrestamo(BaseModel):
     cantidad_prestada: int
     fecha_prestamo: datetime
     factor_estancia: float
+    prestamo_id: Optional[int] = None  # Add prestamo_id to track individual loans
 
 # Verificar usuario y material usando solicitudes HTTP a los microservicios
 async def verificar_usuario(usuario_id: int):
@@ -114,6 +115,22 @@ async def actualizar_estado_material(material_id: int, nuevo_estado: str):
         except httpx.RequestError:
             return False
 
+async def actualizar_material_completo(material_id: int, nueva_cantidad: int, nuevo_estado: str):
+    """Actualiza tanto la cantidad como el estado de un material"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.patch(
+                f"{MATERIAL_SERVICE_URL}/materiales/{material_id}",
+                json={
+                    "cantidad": nueva_cantidad,
+                    "estado": nuevo_estado
+                }
+            )
+            return response.status_code == 200, response.json() if response.status_code == 200 else None
+        except httpx.RequestError as e:
+            print(f"Error al actualizar material: {e}")
+            return False, None
+
 @router.post("/", response_model=PrestamoResponse)
 async def crear_prestamo(prestamo: PrestamoCreate, db: Session = Depends(get_db)):
     # Verificar que el usuario existe
@@ -129,7 +146,7 @@ async def crear_prestamo(prestamo: PrestamoCreate, db: Session = Depends(get_db)
     if material_data["estado"] != "disponible":
         raise HTTPException(status_code=400, detail="Material no disponible para préstamo")
     
-    # Calcular fecha de devolución esperada (ejemplo: 7 días)
+    # Calcular fecha de devolución esperada(7 dias defecto)
     fecha_devolucion = datetime.now() + timedelta(days=7)
     
     # Crear el préstamo
@@ -481,8 +498,10 @@ async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
             
             factor_estancia = total_dias / len(data['prestamos']) if data['prestamos'] else 0
             
-            # Get the most recent loan date (first one since they're ordered by desc)
-            fecha_prestamo_reciente = data['prestamos'][0].fecha_prestamo
+            # Get the most recent loan date and prestamo_id (first one since they're ordered by desc)
+            prestamo_reciente = data['prestamos'][0]
+            fecha_prestamo_reciente = prestamo_reciente.fecha_prestamo
+            prestamo_id_reciente = prestamo_reciente.id
             
             resultado.append(
                 MaterialEnPrestamo(
@@ -491,7 +510,8 @@ async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
                     autor=material_data["autor"],
                     cantidad_prestada=data['cantidad'],
                     fecha_prestamo=fecha_prestamo_reciente,
-                    factor_estancia=factor_estancia
+                    factor_estancia=factor_estancia,
+                    prestamo_id=prestamo_id_reciente
                 )
             )
     
@@ -499,3 +519,51 @@ async def obtener_materiales_en_prestamo(db: Session = Depends(get_db)):
     resultado.sort(key=lambda x: x.fecha_prestamo, reverse=True)
     
     return resultado
+
+@router.put("/{prestamo_id}/cancelar", response_model=PrestamoResponse)
+async def cancelar_prestamo(
+    prestamo_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Cancela un préstamo y restaura la disponibilidad del material
+    """
+    db_prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    if db_prestamo is None:
+        raise HTTPException(status_code=404, detail="Préstamo no encontrado")
+    
+    if db_prestamo.estado != "Activo":
+        raise HTTPException(status_code=400, detail="Solo se pueden cancelar préstamos activos")
+    
+    # Obtener información actual del material
+    material_existe, material_data = await obtener_material(db_prestamo.material_id)
+    if not material_existe:
+        raise HTTPException(status_code=404, detail="Material no encontrado")
+    
+    # Calcular nueva cantidad (sumar 1 para devolver)
+    nueva_cantidad = material_data["cantidad"] + 1
+    
+    # Actualizar el estado del material a disponible cuando se devuelve
+    estado_material = "disponible"
+    
+    # Actualizar la cantidad y estado del material
+    material_actualizado, _ = await actualizar_material_completo(
+        db_prestamo.material_id, 
+        nueva_cantidad, 
+        estado_material
+    )
+    
+    if not material_actualizado:
+        raise HTTPException(
+            status_code=500, 
+            detail="Error al actualizar la cantidad del material al cancelar el préstamo"
+        )
+    
+    # Actualizar el estado del préstamo
+    db_prestamo.estado = "Cancelado"
+    db_prestamo.fecha_devolucion_real = datetime.now()
+    
+    db.commit()
+    db.refresh(db_prestamo)
+    
+    return db_prestamo

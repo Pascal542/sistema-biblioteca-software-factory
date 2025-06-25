@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 import logging
-#BACKEND_URL = "http://192.168.1.200"
-BACKEND_URL = "http://localhost"
+
+BACKEND_IP = os.getenv("BIP", "localhost")
+BACKEND_URL = f"http://{BACKEND_IP}"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

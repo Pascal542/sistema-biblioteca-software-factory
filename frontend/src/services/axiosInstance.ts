@@ -1,8 +1,22 @@
 import axios from 'axios';
-import { BACKEND } from '../utils/conexion';
+
+const isDev = import.meta.env.DEV;
+const currentHost = window.location.hostname;
+const getBaseURL = () => {
+  const backendIP = import.meta.env.VITE_BACKEND_IP;
+  
+  if (backendIP) {
+    return `http://${backendIP}:8000/api`;
+  }
+
+  if (isDev && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+    return `http://${currentHost}:8000/api`;
+  }
+  return '/api';
+};
 
 const api = axios.create({
-  baseURL: `${BACKEND}/api`,
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,11 +38,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Solo limpiar token, no redireccionar automáticamente
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Permitir que el AuthContext maneje la redirección
     }
     return Promise.reject(error);
   }

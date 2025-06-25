@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.solicitud_prestamo import SolicitudPrestamo
 from app.schemas.solicitud_prestamo import SolicitudPrestamoCreate, SolicitudPrestamoResponse, SolicitudPrestamoUpdate
-#BACKEND_URL = "http://192.168.1.200"
-BACKEND_URL = "http://localhost"
+BACKEND_IP = os.getenv("BIP", "localhost")
+BACKEND_URL = f"http://{BACKEND_IP}"
 
 router = APIRouter()
 

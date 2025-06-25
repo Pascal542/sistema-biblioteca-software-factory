@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import { BACKEND } from '../utils/conexion';
+import api from '../services/axiosInstance';
 
 interface AuthContextType {
   user: { email: string; rol: string; nombre?: string } | null;
@@ -12,6 +11,7 @@ interface AuthContextType {
   role: string | null;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
@@ -22,6 +22,7 @@ export const AuthContext = createContext<AuthContextType>({
   role: null
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -34,11 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token) {
       checkAuth();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${BACKEND}/api/auth/login`, {
+      const response = await api.post('/auth/login', {
         username: email,
         password: password
       }, {
